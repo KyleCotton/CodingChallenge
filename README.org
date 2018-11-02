@@ -5,7 +5,8 @@
 - [ ] Generate Random Map
 *** Ideas
 **** 3D rendering
- http://www.cs.tau.ac.il/~dcor/Graphics/adv-slides/Introduction%20to%20rendering%20techniques.pdf
+ http://www.cs.tau.ac.il/~dcor/Graphics/adv-slides/Introduction%20to%20rendering%20techniques.pd
+ mehtod for controlling rotation: map vertical mouse motion (when mouse down) to rotation on the xy plane and horizontal motion to rotation on the zx plane
  Doom (Duh)
  3D game of life
  4D geometry
