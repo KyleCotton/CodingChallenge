@@ -7,7 +7,11 @@ To Compile: ghc Haq.hs
 Toi Run   : ./Haq
 -}
 
+import qualified GuiWindow
+
 import System.Environment
 main :: IO ()
-main = putStrLn "Game of Life!"
+main = GuiWindow.gui
+
+
  
