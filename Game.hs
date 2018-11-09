@@ -18,6 +18,9 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 -}
 
+-- WRITE STRIP FUNCTION TO REMOVE ALL OF THE FALSE FROM THE GRID
+--strip g = filter (\(h, l) -> h) g
+
 nIterations :: Int -> Grid -> [Grid]
 nIterations n g = take n $ iterate (nextGen) g
 
