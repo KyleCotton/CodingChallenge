@@ -48,7 +48,8 @@ rotatePoints theta pts = [ vecToPoint . (rotate2D theta) $ pointToVec pt| pt <- 
 main :: IO ()
 main = do
   (_progName, _args) <- getArgsAndInitialize
-  _window <- createWindow "Hello World"
+  initialDisplayMode $= [DoubleBuffered]
+  createWindow "Hello World"
   reshapeCallback $= Just reshape
   angle <- newIORef 0.0
   displayCallback $= (display angle)
@@ -70,6 +71,7 @@ display angle = do
     color3f 1 0 0 
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (rotatePoints angle' myPoints)
   flush
+  swapBuffers
 
 idle :: IORef GLfloat -> IdleCallback
 idle angle = do
