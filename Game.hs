@@ -18,20 +18,25 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 -}
 
-startPeople :: [Person]
-startPeople = [(False,(0,0)),(True,(0,1)),(False,(0,2)),(True,(0,3)),(False,(0,4))]
+nIterations :: Int -> Grid -> [Grid]
+nIterations n g = take n $ iterate (nextGen) g
 
+startPeople, startPeople' :: [Person]
+startPeople = [(False,(0,0)),(True,(0,1)),(False,(0,2)),(True,(0,3)),(False,(0,4)), (True, (1,2))]
 
--- TESTING GRID
+startPeople' = [(False,(0,0)),(False,(0,1)),(True,(0,2)),(False,(0,3)),(False,(0,4)), (True, (1,2))]
+
 emptyGrid :: Int -> Int -> Grid
 emptyGrid n p = [(False, (x,y)) | x <- [0..(n-1)], y <-[0..(p-1)]]
 
--- use traspose to check adjacent column
 nextGen :: Grid -> Grid
-nextGen ((h,(x,y)):gs) = undefined
+nextGen gs = map (\p@(h, l) -> (isAlive p gs, l)) gs
 
 isAlive :: Person -> Grid -> Bool
-isAlive (h, (x, y)) gss@((h', (x', y')):gs) = undefined
+isAlive (h, (x, y)) gss = case h of
+                            True  -> gs == 2 || gs == 3
+                            False -> gs == 3
+                          where gs = length [1 | (h', (x', y')) <- gss, x' `elem` [x-1,x,x+1], y' `elem` [y-1,y,y+1], h', (x/=x' || y/=y')] 
 
 
 
