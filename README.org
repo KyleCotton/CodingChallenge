@@ -24,3 +24,4 @@ http://hackage.haskell.org/package/GLUT
 
 *** Links
 **** TODO Convert From Java Script https://github.com/rithmschool/game-of-life-3d
+DON'T FORGET TO COMMENT THE CODE, IF WE DON'T WE GET 'MARKED DOWN'
