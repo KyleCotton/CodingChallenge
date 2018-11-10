@@ -4,6 +4,7 @@ import Data.List
 import Test.QuickCheck
 import Graphics.UI.GLUT hiding (Matrix, Angle)
 import Data.IORef
+import Control.Concurrent
 
 myPoints :: [Point]
 myPoints = [(0.5,0.5), (-0.5, 0.5), (-0.5, -0.5), (0.5, -0.5)]
@@ -48,13 +49,11 @@ rotatePoints theta pts = [ vecToPoint . (rotate2D theta) $ pointToVec pt| pt <- 
 main :: IO ()
 main = do
   (_progName, _args) <- getArgsAndInitialize
-  --set the framerate to 60HZ
-  gameModeCapabilities $= [Where' GameModeRefreshRate IsEqualTo 60]
   --makes GLUT use double buffering
   initialDisplayMode $= [DoubleBuffered]
   --creates a window
-  enterGameMode
   createWindow "Game Of Life"
+  enterGameMode
   reshapeCallback $= Just reshape
   --creates a mutatable variable for the angle of rotation
   angle <- newIORef 0.0
@@ -85,6 +84,8 @@ display angle = do
     --takes a list of points and converts them to vertexs
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (rotatePoints angle' myPoints)
   flush
+  --limits the frame rate to 60 fps
+  threadDelay (1000000 `div` 60)
   --tells the double buffer to update
   swapBuffers
 
