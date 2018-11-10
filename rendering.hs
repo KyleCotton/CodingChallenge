@@ -48,11 +48,19 @@ rotatePoints theta pts = [ vecToPoint . (rotate2D theta) $ pointToVec pt| pt <- 
 main :: IO ()
 main = do
   (_progName, _args) <- getArgsAndInitialize
+  --set the framerate to 60HZ
+  gameModeCapabilities $= [Where' GameModeRefreshRate IsEqualTo 60]
+  --makes GLUT use double buffering
   initialDisplayMode $= [DoubleBuffered]
-  createWindow "Hello World"
+  --creates a window
+  enterGameMode
+  createWindow "Game Of Life"
   reshapeCallback $= Just reshape
+  --creates a mutatable variable for the angle of rotation
   angle <- newIORef 0.0
+  --displays points
   displayCallback $= (display angle)
+  --makes changes
   idleCallback $= Just (idle angle)
   mainLoop
 
@@ -64,19 +72,28 @@ reshape size = do
 --displays the points as a loop
 display :: IORef GLfloat -> DisplayCallback
 display angle = do
+  --helper function that creates a color
   let color3f r g b = color $ Color3 r g (b :: GLfloat)
+  --clears the color buffer
   clear [ ColorBuffer ]
+  --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
+  --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
-    color3f 1 0 0 
+    --sets the color to red
+    color3f 1 0 0
+    --takes a list of points and converts them to vertexs
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (rotatePoints angle' myPoints)
   flush
+  --tells the double buffer to update
   swapBuffers
 
+--makes changes to variables as needed
 idle :: IORef GLfloat -> IdleCallback
 idle angle = do
-  --angle $~! (+ 0.1)
+  --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
+  --sets the balue of the mutatble variabel to (angle' + 0.05) mod 360
   writeIORef angle (getNewAng angle')
   postRedisplay Nothing
     where
