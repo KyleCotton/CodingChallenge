@@ -1,7 +1,11 @@
 {-
 GAME LOGIC MODULE:
 
-GAME INSTRUCTIONS:
+This module contains all of the logic of the game controlling the
+transition between the stages of the game.
+
+
+GAME RULES:
 Alive: 2-3 Friends -> Alive
        else        -> Dead
 
@@ -9,29 +13,24 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (startPeople, nIterations, gridToLivingPoints) where
+module Game (Game, startPeople, nIterations, gridToLivingPoints) where
 
-type Health   = Bool
-type Location = (Float , Float)
-type Person   = (Health, Location)
-type Grid     = [Person]
+import System.Random
 
--- DON'T THINK THIS FUNCTION IS REQUIRED
--- ### Not Working
--- WRITE STRIP FUNCTION TO REMOVE ALL OF THE FALSE FROM THE GRID
---strip :: [Grid] -> [Grid]
---strip gs = map ( filter (\(h, l) -> h) ) gs
+type Health   = Bool               -- Each Block has an accociated health
+type Location = (Float , Float)    -- Each Block has an cartesian coordinate
+type Person   = (Health, Location) -- Each 'Person ' will have a health and location
+type Grid     = [Person]           -- The grid is represented as a list of all the people
 
-nIterations :: Int -> Grid -> [Grid]
-nIterations n g = take n $ iterate (nextGen) g
+nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids 
+nIterations n g = take n $ iterate (nextGen) g   --     after n iterations
 
-gridToLivingPoints :: Grid -> [Location]
-gridToLivingPoints grd = [coord | (liv, coord)<-grd, liv]
---filter (\(h, l) -> l) grd
---[coord | (liv, coord)<-grd, liv]
+gridToLivingPoints :: Grid -> [Location]               -- This returns a list of locations
+gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  --     of alive points
 
 -- Example starting grid
-startPeople :: Grid
+startPeople, testGrid :: Grid
+testGrid = undefined
 startPeople = [
   (False,(0,0)),(True,(0,1)),(False,(0,2)),(True,(0,3)),(False,(0,4)),
   (False,(1,0)),(True,(1,1)),(False,(1,2)),(True,(1,3)),(False,(1,4)),
@@ -40,18 +39,21 @@ startPeople = [
   (False,(4,0)),(True,(4,1)),(False,(4,2)),(True,(4,3)),(False,(4,4))
   ]
 
--- Function that generates the next grid from the previous
-nextGen :: Grid -> Grid
-nextGen gss = map (\p@(h, l) -> (isAlive p gss, l)) gss
 
-isAlive :: Person -> Grid -> Bool
-isAlive (h'', (x'', y'')) gss = let gs = length [1 | (h', (x', y'))
-                                                   <- gss, x' `elem` [x''-1,x'',x''+1]
-                                                         , y' `elem` [y''-1,y'',y''+1]
-                                                         , h'  , (x''/=x' || y''/=y')]
-                                in
+nextGen :: Grid -> Grid                                  -- This maps the next function over
+nextGen gss = map (\p@(h, l) -> (isAlive p gss, l)) gss  --     the entire grid of people
+
+isAlive :: Person -> Grid -> Bool                                                       -- Function that generates the next grid from the previous
+isAlive (h'', (x'', y'')) gss = let gs = length [1 | (h', (x', y'))                     --    This fucntion takes in a person and the current grid 
+                                                   <- gss, x' `elem` [x''-1,x'',x''+1]  --    if the block is alive and 3 or 2 of its neigbours    
+                                                         , y' `elem` [y''-1,y'',y''+1]  --    are also alive the the block will stay alive.        
+                                                         , h'  , (x''/=x' || y''/=y')]  --    if the block is dead and is surrounded by 3 alive    
+                                in                                                      --    neigbours then it will become alive.                 
                                   case h'' of
                                     True  -> (gs == 2 || gs == 3)
                                     False -> (gs == 3)
 
 -- ### START THE GAME WITH RANDOM GRID
+randomGrid :: Grid
+randomGrid = undefined
+
