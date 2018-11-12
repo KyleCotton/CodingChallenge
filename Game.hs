@@ -9,14 +9,10 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game where (startPeople, nIterations)
-
-import System.Random
-import Control.Monad
-import Test.QuickCheck
+module Game (startPeople, nIterations) where
 
 type Health   = Bool
-type Location = (Float   , Float)
+type Location = (Float , Float)
 type Person   = (Health, Location)
 type Grid     = [Person]
 
@@ -31,6 +27,8 @@ nIterations n g = take n $ iterate (nextGen) g
 
 gridToLivingPoints :: Grid -> [Location]
 gridToLivingPoints grd = [coord | (liv, coord)<-grd, liv]
+--filter (\(h, l) -> l) grd
+--[coord | (liv, coord)<-grd, liv]
 
 -- Example starting grid
 startPeople :: Grid
