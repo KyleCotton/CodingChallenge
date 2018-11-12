@@ -9,7 +9,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game where
+module Game where (startPeople, nIterations)
 
 import System.Random
 import Control.Monad
