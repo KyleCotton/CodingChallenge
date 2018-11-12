@@ -15,8 +15,11 @@ type Vector = [GLfloat]
 type Point = (GLfloat, GLfloat)
 type Angle = GLfloat
 
-matrix1 :: Matrix
-matrix1 = [[1,2,3],[3,5,6],[6,8,1]]
+gridWidth :: Float
+gridWidth = 100
+
+gridHight :: Float
+gridHight = 100
 
 makeSquare :: GLfloat -> Point -> [Point]
 makeSquare size center = moveSquare byOrigin center
@@ -54,14 +57,21 @@ rotate2D t m = multMatVec rotation m
 rotatePoints :: Angle -> [Point] -> [Point]
 rotatePoints theta pts = [ vecToPoint . (rotate2D theta) $ pointToVec pt| pt <- pts]
 
-gridToSquares :: Grid -> [Point]
-gridToSquares grd = undefined
+mapPoints :: [Point] -> [Point]
+mapPoints lst = [(((x-xOffset)/xOffset)+(1/gridWidth), -(((y-yOffset)/yOffset) + (1/gridWidth))) | (y,x)<-lst]
+  where
+    xOffset = (gridWidth/2)
+    yOffset = (gridHight/2)
+
+makeSquares :: [Point] -> [Point]
+makeSquares lst = concat [makeSquare (2/gridWidth) point | point<-lst]
 
 main :: IO ()
 main = do
   (_progName, _args) <- getArgsAndInitialize
   --makes GLUT use double buffering
   initialDisplayMode $= [DoubleBuffered]
+  initialWindowSize  $= (Size 1000 1000)
   --creates a window
   createWindow "Game Of Life"
   enterGameMode
@@ -71,7 +81,7 @@ main = do
   --displays points
   displayCallback $= (display angle)
   --makes changes
-  idleCallback $= Just (idle angle)
+  --idleCallback $= Just (idle angle)
   mainLoop
 
 reshape :: ReshapeCallback
@@ -93,8 +103,7 @@ display angle = do
     --sets the color to red
     color3f 1 0 0
     --takes a list of points and converts them to vertexs
-    
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (rotatePoints angle' myPoints)
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (makeSquares . mapPoints $ gridToLivingPoints startPeople)
   flush
   --limits the frame rate to 60 fps
   threadDelay (1000000 `div` 60)
