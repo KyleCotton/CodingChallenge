@@ -54,7 +54,8 @@ rotate2D t m = multMatVec rotation m
 rotatePoints :: Angle -> [Point] -> [Point]
 rotatePoints theta pts = [ vecToPoint . (rotate2D theta) $ pointToVec pt| pt <- pts]
 
---gridToSquares :: 
+gridToSquares :: Grid -> [Point]
+gridToSquares grd = undefined
 
 main :: IO ()
 main = do
