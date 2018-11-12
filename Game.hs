@@ -22,7 +22,6 @@ type Grid     = [Person]
 
 -- DON'T THINK THIS FUNCTION IS REQUIRED
 -- ### Not Working
-
 -- WRITE STRIP FUNCTION TO REMOVE ALL OF THE FALSE FROM THE GRID
 --strip :: [Grid] -> [Grid]
 --strip gs = map ( filter (\(h, l) -> h) ) gs
@@ -42,15 +41,16 @@ startPeople = [
 
 -- Function that generates the next grid from the previous
 nextGen :: Grid -> Grid
-nextGen gs = map (\p@(h, l) -> (isAlive p gs, l)) gs
-             where
-               isAlive :: Person -> Grid -> Bool
-               isAlive (h'', (x'', y'')) gss = case h'' of
-                                           True  -> gs == 2 || gs == 3
-                                           False -> gs == 3
-                                             where
-                                               gs = length [1 | (h', (x', y')) <- gss, x' `elem` [x''-1,x'',x''+1]
-                                                                                     , y' `elem` [y''-1,y'',y''+1]
-                                                                                     , h'  , (x''/=x' || y''/=y')]
+nextGen gss = map (\p@(h, l) -> (isAlive p gss, l)) gss
+
+isAlive :: Person -> Grid -> Bool
+isAlive (h'', (x'', y'')) gss = let gs = length [1 | (h', (x', y'))
+                                                   <- gss, x' `elem` [x''-1,x'',x''+1]
+                                                         , y' `elem` [y''-1,y'',y''+1]
+                                                         , h'  , (x''/=x' || y''/=y')]
+                                in
+                                  case h'' of
+                                    True  -> (gs == 2 || gs == 3)
+                                    False -> (gs == 3)
 
 -- ### START THE GAME WITH RANDOM GRID
