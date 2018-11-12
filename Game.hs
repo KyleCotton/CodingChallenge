@@ -13,7 +13,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (Game, startPeople, nIterations, gridToLivingPoints) where
+module Game (Grid, startPeople, nIterations, gridToLivingPoints) where
 
 import System.Random
 
