@@ -29,6 +29,9 @@ type Grid     = [Person]
 nIterations :: Int -> Grid -> [Grid]
 nIterations n g = take n $ iterate (nextGen) g
 
+gridToLivingPoints :: Grid -> [Location]
+gridToLivingPoints grd = [coord | (liv, coord)<-grd, liv]
+
 -- Example starting grid
 startPeople :: Grid
 startPeople = [
