@@ -22,9 +22,10 @@ type Grid     = [Person]
 
 -- DON'T THINK THIS FUNCTION IS REQUIRED
 -- ### Not Working
+
 -- WRITE STRIP FUNCTION TO REMOVE ALL OF THE FALSE FROM THE GRID
-strip :: [Grid] -> [Grid]
-strip gs = map ( filter (\(h, l) -> h) ) gs
+--strip :: [Grid] -> [Grid]
+--strip gs = map ( filter (\(h, l) -> h) ) gs
 
 nIterations :: Int -> Grid -> [Grid]
 nIterations n g = take n $ iterate (nextGen) g
