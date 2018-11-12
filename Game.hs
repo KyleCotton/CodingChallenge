@@ -31,14 +31,16 @@ gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  --     of alive poi
 -- Example starting grid
 startPeople, testGrid :: Grid
 testGrid = undefined
-startPeople = [
-  (False,(0,0)),(True,(0,1)),(False,(0,2)),(True,(0,3)),(False,(0,4)),
-  (False,(1,0)),(True,(1,1)),(False,(1,2)),(True,(1,3)),(False,(1,4)),
-  (False,(2,0)),(True,(2,1)),(False,(2,2)),(True,(2,3)),(False,(2,4)),
-  (False,(3,0)),(True,(3,1)),(False,(3,2)),(True,(3,3)),(False,(3,4)),
-  (False,(4,0)),(True,(4,1)),(False,(4,2)),(True,(4,3)),(False,(4,4))
+{- startPeople = [
+  (False,(0,0)),(True,(50,51)),(False,(0,2)),(True,(50,53)),(False,(0,4)),
+  (False,(1,0)),(True,(51,51)),(False,(1,2)),(True,(51,53)),(False,(1,4)),
+  (False,(2,0)),(True,(52,51)),(False,(2,2)),(True,(52,53)),(False,(2,4)),
+  (False,(3,0)),(True,(53,51)),(False,(3,2)),(True,(53,53)),(False,(3,4)),
+  (False,(4,0)),(True,(54,51)),(False,(4,2)),(True,(54,53)),(False,(4,4))
   ]
+-}
 
+startPeople = [(False, (23,25)),(True,(24,25)), (True,(25,25)), (True,(26,25)), (False, (27,25)),(False,(24,26)), (False,(25,26)), (False,(26,26)), (False,(24,24)), (False,(25,24)), (False,(26,24))]
 
 nextGen :: Grid -> Grid                                  -- This maps the next function over
 nextGen gss = map (\p@(h, l) -> (isAlive p gss, l)) gss  --     the entire grid of people
