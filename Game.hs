@@ -16,7 +16,7 @@ import Control.Monad
 import Test.QuickCheck
 
 type Health   = Bool
-type Location = (Int   , Int)
+type Location = (Float   , Float)
 type Person   = (Health, Location)
 type Grid     = [Person]
 
