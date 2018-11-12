@@ -9,7 +9,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (startPeople, nIterations) where
+module Game (startPeople, nIterations, gridToLivingPoints) where
 
 type Health   = Bool
 type Location = (Float , Float)
