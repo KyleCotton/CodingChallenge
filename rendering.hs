@@ -5,6 +5,7 @@ import Test.QuickCheck
 import Graphics.UI.GLUT hiding (Matrix, Angle)
 import Data.IORef
 import Control.Concurrent
+import Game
 
 myPoints :: [Point]
 myPoints = [(0.5,0.5), (-0.5, 0.5), (-0.5, -0.5), (0.5, -0.5)]
@@ -16,6 +17,13 @@ type Angle = GLfloat
 
 matrix1 :: Matrix
 matrix1 = [[1,2,3],[3,5,6],[6,8,1]]
+
+makeSquare :: GLfloat -> Point -> [Point]
+makeSquare size center = moveSquare byOrigin center
+  where
+    moveSquare xs (x, y)= [((x + x'), (y + y'))| (x', y') <- xs]
+    byOrigin = [(radius', radius'), (-radius', radius'), (-radius', -radius'), (radius', -radius')]
+    radius' = (size/ 2)
 
 --Takes two matrices and multiplies them
 multiplyMat :: Matrix -> Matrix -> Matrix
@@ -45,6 +53,8 @@ rotate2D t m = multMatVec rotation m
 --Takes an angle and list of points and rotates each of the poins around the origin
 rotatePoints :: Angle -> [Point] -> [Point]
 rotatePoints theta pts = [ vecToPoint . (rotate2D theta) $ pointToVec pt| pt <- pts]
+
+--gridToSquares :: 
 
 main :: IO ()
 main = do
@@ -82,6 +92,7 @@ display angle = do
     --sets the color to red
     color3f 1 0 0
     --takes a list of points and converts them to vertexs
+    
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (rotatePoints angle' myPoints)
   flush
   --limits the frame rate to 60 fps
