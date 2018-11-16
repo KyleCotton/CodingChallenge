@@ -94,20 +94,22 @@ rotatePoints theta pts = [ vecToPoint . (rotateZ theta) $ pointToVec pt| pt <- p
    -- yOffset = (gridHight/2)
 
 makeCubes :: [Point] -> [Point]
-makeCubes lst = concat [makeCube (2/gridWidth) point | point<-lst]
+makeCubes lst = concat [makeCube (1) point | point<-lst]
 
 subVectors :: Vector -> Vector -> Vector
 subVectors v1 v2 = [(v1 !! a) - (v2 !! a) | a <- [0..(length v1 - 1)]]
 
 projects :: (Angle, Angle, Angle) -> [Point] -> [Point2D]
-projects = undefined
+projects angles points = map (project angles [5,5,5] [0,0,0.1]) (map pointToVec points)
 
 --project :: (Angle, Angle, Angle) -> [Point] -> [Point] -> [Point] -> [Point2D]
-project (ax, ay, az) pointPos camPos =  multMatVec  (multiplyMat (multiplyMat (cRotationX ax) (rotationY ay)) (cRotationZ az)) (subVectors pointPos camPos)
+--project (ax, ay, az) pointPos camPos =  multMatVec  (multiplyMat (multiplyMat (cRotationX ax) (rotationY ay)) (cRotationZ az)) (subVectors pointPos camPos)
 
-project' (ax, ay, az) pointPos camPos = proj $ vecToPoint (subVectors pointPos camPos)
+project :: (Angle, Angle, Angle) -> Vector -> Vector -> Vector -> Point2D
+project (ax, ay, az) camPos disPos pointPos = proj $ vecToPoint (subVectors pointPos camPos)
   where
-    proj points  = [dx points , dy points, dz points]
+    get2DPoints (dx', dy', dz') (ex, ey, ez) = ((ez/dz')*dx' + ex, (ez/dz')*dy' + ey)
+    proj points  = get2DPoints (dx points , dy points, dz points) (vecToPoint disPos)
     cx = cos(radians ax)
     cy = cos(radians ay)
     cz = cos(radians az)
@@ -118,8 +120,8 @@ project' (ax, ay, az) pointPos camPos = proj $ vecToPoint (subVectors pointPos c
     dy (x,y,z) = (sx*(cy*z + sy*(sz*y + cz*x)) + cx*(cz*y - sz*x))
     dz (x,y,z) = (cx*(cy*z + sy*(sz*y + cz*x)) - sx*(cz*y - sz*x))
 
-prop_projects :: (Angle, Angle, Angle) -> Vector -> Vector -> Property
-prop_projects angles pointP camP = length pointP == 3 && length camP == 3 ==> (project angles pointP camP) == (project' angles pointP camP)
+--prop_projects :: (Angle, Angle, Angle) -> Vector -> Vector -> Property
+--prop_projects angles pointP camP = length pointP == 3 && length camP == 3 ==> (project angles pointP camP) == (project' angles pointP camP)
 
 
 main :: IO ()
@@ -133,11 +135,11 @@ main = do
   enterGameMode
   reshapeCallback $= Just reshape
   --creates a mutatable variable for the angle of rotation
-  cameraAngle <- newIORef (0, 0, 0)
+  cameraAngle <- newIORef (90, 90, 90)
   --displays points
   displayCallback $= (display cameraAngle)
   --makes changes
-  --idleCallback $= Just (idle angle)
+  idleCallback $= Just (idle cameraAngle)
   mainLoop
 
 reshape :: ReshapeCallback
@@ -155,7 +157,7 @@ display cameraAngle = do
   --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef cameraAngle
   --renders groups of four vertexs as squares
-  renderPrimitive Quads $ do
+  renderPrimitive Points $ do
     --sets the color to red
     color3f 1 0 0
     --takes a list of points and converts them to vertexs
@@ -167,15 +169,17 @@ display cameraAngle = do
   swapBuffers
 
 --makes changes to variables as needed
-idle :: IORef GLfloat -> IdleCallback
+idle :: IORef (Angle, Angle, Angle) -> IdleCallback
 idle angle = do
   --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
   --sets the balue of the mutatble variabel to (angle' + 0.05) mod 360
-  writeIORef angle (getNewAng angle')
+  writeIORef angle (getNewAngs angle')
   postRedisplay Nothing
     where
       newAng angles = angles + 0.05
       getNewAng ang = if (newAng ang) > 360 then (newAng ang) - 360 else (newAng ang)
+      getNewAngs (a1, a2, a3) = (getNewAng a1, getNewAng a2, getNewAng a3)
+
 
 
