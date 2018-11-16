@@ -13,7 +13,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (Grid, theGrid, nIterations, gridToLivingPoints) where
+module Game (Grid, theGrid, nIterations, gridToLivingPoints, gridToDeadPoints) where
 import Data.List
 
 type Health   = Bool               -- Each Block has an accociated health
@@ -21,27 +21,31 @@ type Location = (Float , Float)    -- Each Block has an cartesian coordinate
 type Person   = (Health, Location) -- Each 'Person' will have a health and location
 type Grid     = [Person]           -- The grid is represented as a list of all the people
 
+theGrid :: Grid
+theGrid = [( ((fromInteger x, fromInteger y) `elem` aliveStates)            -- Define the starting Grid for the game
+           , (fromInteger x, fromInteger y) ) | x <- [0..99], y <- [0..99]] --     The grid will be all false except
+                                                                            --     the ones in aliveStates
+theOtherGrid :: Grid
+theOtherGrid = [ (True,l) | l <- aliveStates ]
+
+aliveStates :: [Location]  -- A list of locations of the alive states
+aliveStates = [(50,50)
+              ,(51,50)
+              ,(49,50)
+              ,(40,40)
+              ,(40,41)
+              ,(40,39)]
+
+
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids
 nIterations n g = take n $ iterate (nextGen) g   --   after n iterations
 
 gridToLivingPoints :: Grid -> [Location]                     -- This returns a list of locations
 gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  --    of alive points
 
--- Example starting grid
-startPeople, testGrid :: Grid
-testGrid = [
-  (False,(0,0)),(True,(50,51)),(False,(0,2)),(True,(50,53)),(False,(0,4)),
-  (False,(1,0)),(True,(51,51)),(False,(1,2)),(True,(51,53)),(False,(1,4)),
-  (False,(2,0)),(True,(52,51)),(False,(2,2)),(True,(52,53)),(False,(2,4)),
-  (False,(3,0)),(True,(53,51)),(False,(3,2)),(True,(53,53)),(False,(3,4)),
-  (False,(4,0)),(True,(54,51)),(False,(4,2)),(True,(54,53)),(False,(4,4))
-  ]
+gridToDeadPoints :: Grid -> [Location]                     -- This returns a list of locations
+gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]  --    of alive points
 
-startPeople = [
-  (False,(23,25)), (True ,(24,25)), (True ,(25,25)), (True,(26,25)),
-  (False,(27,25)), (False,(24,26)), (False,(25,26)), (False,(26,26)),
-  (False,(24,24)), (False,(25,24)), (False,(26,24))
-  ]
 
 nextGen :: Grid -> Grid                                  -- This maps the next function over
 nextGen gss = filter (\steve -> isAlive steve gss) (map (\p@(h, l) -> (isAlive p gss, l))
@@ -51,9 +55,6 @@ nextGen gss = filter (\steve -> isAlive steve gss) (map (\p@(h, l) -> (isAlive p
                                                       not (elem local (getPoints gss) ) ] ))
                   where
                     zombieLocals = (concat (map zombieLocal ( gridToLivingPoints gss )))
-
--- filter (\(p,l) -> isAlive p gss) gss
---
 
 getPoints :: Grid -> [Location]
 getPoints = map (\(p,l) -> l)
@@ -70,24 +71,3 @@ isAlive (h, (x, y)) gss = let gs = length [1 |  (h', (x', y'))                  
                                   case h of
                                     True  -> (gs == 2 || gs == 3)
                                     False -> (gs == 3)
-
--- ### START THE GAME WITH RANDOM GRID
--- THE GRID IS 100 X 100 IN SIZE
-
--- type Location = (Float , Float)
--- type Person   = (Health, Location)
--- type Grid     = [Person]
-
-theGrid :: Grid
-theGrid = [(((fromInteger x, fromInteger y) `elem` aliveStates), (fromInteger x, fromInteger y)) | x <- [0..99], y <- [0..99]]
-
-theOtherGrid :: Grid
-theOtherGrid = [ (True,l) | l <- aliveStates ]
-
-aliveStates :: [Location]
-aliveStates = [(50,50)
-              ,(51,50)
-              ,(49,50)
-              ,(40,40)
-              ,(40,41)
-              ,(40,39)]
