@@ -137,12 +137,12 @@ display angle = do
   --renders groups of four vertexs as squares
   renderPrimitive Points $ do
     --sets the color to red
-    color3f 1 0 0
+    color3f 1 1 1
     --takes a list of points and converts them to vertexs
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) ((projects 2) $ map (rotateX angle') (makeCubes myPoints))
   flush
   --limits the frame rate to 60 fps
-  threadDelay (1000000 `div` 60)
+  threadDelay (1000 `div` 20)
   --tells the double buffer to update
   swapBuffers
 
