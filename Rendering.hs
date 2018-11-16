@@ -16,10 +16,10 @@ type Point = (GLfloat, GLfloat)
 type Angle = GLfloat
 
 gridWidth :: Float
-gridWidth = 50
+gridWidth = 100
 
 gridHight :: Float
-gridHight = 50
+gridHight = 100
 
 makeSquare :: GLfloat -> Point -> [Point]
 makeSquare size center = moveSquare byOrigin center
@@ -47,7 +47,7 @@ main = do
   initialDisplayMode $= [DoubleBuffered]
   initialWindowSize  $= (Size 1000 1000)
   --creates a window
-  createWindow "Game Of Life - Coding Project"
+  createWindow "Game Of Life"
   enterGameMode
   reshapeCallback $= Just reshape
   generation <- newIORef 0
@@ -78,7 +78,7 @@ display population generation  = do
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (makeSquares . mapPoints $ gridToLivingPoints (population !! gen))
   flush
   --limits the frame rate to 60 fps
-  threadDelay (1000000)
+  --threadDelay (1000000)
   --tells the double buffer to update
   swapBuffers
 
@@ -92,4 +92,5 @@ idle gen = do
 
 nGrid :: Int -> Grid -> Grid
 nGrid n g = (nIterations n g)!!(n-1)
+
 
