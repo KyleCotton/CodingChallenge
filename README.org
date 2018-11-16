@@ -25,3 +25,6 @@ http://hackage.haskell.org/package/GLUT
 *** Links
 **** TODO Convert From Java Script https://github.com/rithmschool/game-of-life-3d
 DON'T FORGET TO COMMENT THE CODE, IF WE DON'T WE GET 'MARKED DOWN'
+
+**** Creating a GUI application for Haskell https://www.stackbuilders.com/tutorials/haskell/gui-application/
+Go to section where calculator grid is created - could replace buttons with triggered grid squares, click to make alive, etc
