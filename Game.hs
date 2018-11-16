@@ -28,6 +28,11 @@ theGrid = [( ((fromInteger x, fromInteger y) `elem` aliveStates)            -- D
 theOtherGrid :: Grid
 theOtherGrid = [ (True,l) | l <- aliveStates ]
 
+tOG :: Grid
+tOG = [ (cond (x,y), (fromInteger x, fromInteger y)) | x <- [0..60], y <- [0..60], cond (x,y) ]
+        where
+          cond (a,b) = ((mod a 7 == 0) && (mod b 7 == 0)) || ((mod a 11 == 0) && (mod b 11 == 0))
+
 aliveStates :: [Location]  -- A list of locations of the alive states
 aliveStates = [(50,50)
               ,(51,50)
@@ -42,8 +47,8 @@ nIterations n g = take n $ iterate (nextGen) g   --   after n iterations
 
 gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]                     -- This returns a list of locations
 
-gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  --    of alive points
-gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]  --    of alive points
+gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]
+gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]
 
 nextGen :: Grid -> Grid                                  -- This maps the next function over
 nextGen gss = filter (\steve -> isAlive steve gss) (map (\p@(h, l) -> (isAlive p gss, l))
