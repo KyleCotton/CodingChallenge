@@ -77,6 +77,7 @@ isAlive (h, (x, y)) gss = let gs = length [1 |  (h', (x', y'))                  
 -- type Location = (Float , Float)
 -- type Person   = (Health, Location)
 -- type Grid     = [Person]
+
 theGrid :: Grid
 theGrid = [(((fromInteger x, fromInteger y) `elem` aliveStates), (fromInteger x, fromInteger y)) | x <- [0..99], y <- [0..99]]
 
