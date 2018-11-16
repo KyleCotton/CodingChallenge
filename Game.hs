@@ -13,7 +13,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (Grid, theGrid, nIterations, gridToLivingPoints, gridToDeadPoints) where
+module Game (Grid, Location, theGrid, nIterations, gridToLivingPoints, gridToDeadPoints, aliveStates) where
 import Data.List
 
 type Health   = Bool               -- Each Block has an accociated health
@@ -40,12 +40,11 @@ aliveStates = [(50,50)
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids
 nIterations n g = take n $ iterate (nextGen) g   --   after n iterations
 
-gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]                     -- This returns a list of locations
+gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]
+gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  
+gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]
 
-gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  --    of alive points
-gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]  --    of alive points
-
-nextGen :: Grid -> Grid                                  -- This maps the next function over
+nextGen :: Grid -> Grid                                 
 nextGen gss = filter (\steve -> isAlive steve gss) (map (\p@(h, l) -> (isAlive p gss, l))
                                                     ( gss ++
                                                       [ (False,local) |
