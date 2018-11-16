@@ -13,13 +13,11 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (Grid, startPeople, testGrid, nIterations, gridToLivingPoints) where
-
-import System.Random
+module Game (Grid, theGrid, nIterations, gridToLivingPoints) where
 
 type Health   = Bool               -- Each Block has an accociated health
 type Location = (Float , Float)    -- Each Block has an cartesian coordinate
-type Person   = (Health, Location) -- Each 'Person ' will have a health and location
+type Person   = (Health, Location) -- Each 'Person' will have a health and location
 type Grid     = [Person]           -- The grid is represented as a list of all the people
 
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids 
@@ -58,6 +56,18 @@ isAlive (h'', (x'', y'')) gss = let gs = length [1 |  (h', (x', y'))            
                                     False -> (gs == 3)
 
 -- ### START THE GAME WITH RANDOM GRID
-randomGrid :: Grid
-randomGrid = undefined
+-- THE GRID IS 100 X 100 IN SIZE
 
+-- type Location = (Float , Float)   
+-- type Person   = (Health, Location)
+-- type Grid     = [Person]
+theGrid :: Grid
+theGrid = [(((fromInteger x, fromInteger y) `elem` aliveStates), (fromInteger x, fromInteger y)) | x <- [0..99], y <- [0..99]]
+
+aliveStates :: [Location]
+aliveStates = [(50,50)
+              ,(51,50)
+              ,(49,50)
+              ,(40,40)
+              ,(40,41)
+              ,(40,39)]
