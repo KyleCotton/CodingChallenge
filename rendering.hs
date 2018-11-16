@@ -47,7 +47,7 @@ main = do
   initialDisplayMode $= [DoubleBuffered]
   initialWindowSize  $= (Size 1000 1000)
   --creates a window
-  createWindow "Game Of Life"
+  createWindow "Game Of Life - Coding Project"
   enterGameMode
   reshapeCallback $= Just reshape
   generation <- newIORef 0
