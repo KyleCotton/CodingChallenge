@@ -21,3 +21,19 @@ DON'T FORGET TO COMMENT THE CODE, IF WE DON'T WE GET 'MARKED DOWN'
 
 **** Creating a GUI application for Haskell https://www.stackbuilders.com/tutorials/haskell/gui-application/
 Go to section where calculator grid is created - could replace buttons with triggered grid squares, click to make alive, etc
+* Todo List
+** TODO Get user input
+- Alive squares
+  - By clicking
+- Get the speed that the program should display generations
+  - Slow
+  - Medium
+  - Fast
+  - Very Fast
+  - Or Slider
+
+** TODO Fix the window scaling
+* Error Message
+c112214:CodingChallenge kyle$ ./Haq
+2018-11-16 19:52:32.712 Haq[60266:3398974] GLUT Warning: The following is a new check for GLUT 3.0; update your code.
+2018-11-16 19:52:32.713 Haq[60266:3398974] GLUT Fatal Error: redisplay needed for window 1, but no display callback.
