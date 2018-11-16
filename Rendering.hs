@@ -79,10 +79,6 @@ display population generation  = do
   gen <- readIORef generation
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
-    --sets the colour to red
-    color3f 1 0 0
-    --creates a square that fills the background
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (makeSquare 2 (0,0))
     --sets the colour to green
     color3f 0 1 0
     --gets the current generation and converts it too squares, then draws those squares
