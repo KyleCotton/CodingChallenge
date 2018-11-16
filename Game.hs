@@ -13,7 +13,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (Grid, theGrid, nIterations, gridToLivingPoints, gridToDeadPoints) where
+module Game (Grid, theOtherGrid, nIterations, gridToLivingPoints, gridToDeadPoints) where
 import Data.List
 
 type Health   = Bool               -- Each Block has an accociated health
@@ -39,7 +39,9 @@ aliveStates = [(50,50)
               ,(49,50)
               ,(40,40)
               ,(40,41)
-              ,(40,39)]
+              ,(40,39)
+              ,(39,41)
+              ,(38,40)]
 
 
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids

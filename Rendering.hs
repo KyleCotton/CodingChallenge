@@ -40,9 +40,12 @@ mapPoints lst = [(((x-xOffset)/xOffset)+(1/gridWidth), -(((y-yOffset)/yOffset) +
 makeSquares :: [Point] -> [Point]
 makeSquares lst = concat [makeSquare (2/gridWidth) point | point<-lst]
 
+numOfGens :: Int
+numOfGens = 100
+
 --gets all generations that will be used of a given grid
 gens :: [Grid]
-gens = nIterations 10 theOtherGrid
+gens = [x | x <- (nIterations numOfGens theOtherGrid), x /= []]
 
 main :: IO ()
 main = do
@@ -85,8 +88,8 @@ display population generation  = do
     --gets the current generation and converts it too squares, then draws those squares
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (makeSquares . mapPoints $ gridToLivingPoints (population !! gen))
   flush
-  --limits the frame rate to 60 fps
-  threadDelay (1000000)
+  --limits the frame rate
+  threadDelay (200000)
   --tells the double buffer to update
   swapBuffers
 
@@ -94,8 +97,10 @@ display population generation  = do
 idle :: IORef Int -> IdleCallback
 idle gen = do
   gen' <- readIORef gen
-  writeIORef gen (gen' + 1)
+  writeIORef gen (nextGen gen')
   postRedisplay Nothing
+    where
+      nextGen curGen = if curGen == (length gens-1) then 0 else curGen + 1
 
 
 nGrid :: Int -> Grid -> Grid
