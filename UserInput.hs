@@ -3,4 +3,3 @@ import Game
 
 setAliveStates :: [Location]
 setAliveStates = undefined
-
