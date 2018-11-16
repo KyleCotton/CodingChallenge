@@ -16,10 +16,10 @@ type Point = (GLfloat, GLfloat)
 type Angle = GLfloat
 
 gridWidth :: Float
-gridWidth = 50
+gridWidth = 100
 
 gridHight :: Float
-gridHight = 50
+gridHight = 100
 
 makeSquare :: GLfloat -> Point -> [Point]
 makeSquare size center = moveSquare byOrigin center
@@ -38,7 +38,7 @@ makeSquares :: [Point] -> [Point]
 makeSquares lst = concat [makeSquare (2/gridWidth) point | point<-lst]
 
 gens :: [Grid]
-gens = nIterations 10 theGrid
+gens = nIterations 10 theOtherGrid
 
 main :: IO ()
 main = do
@@ -47,7 +47,7 @@ main = do
   initialDisplayMode $= [DoubleBuffered]
   initialWindowSize  $= (Size 1000 1000)
   --creates a window
-  createWindow "Game Of Life - Coding Project"
+  createWindow "Game Of Life"
   enterGameMode
   reshapeCallback $= Just reshape
   generation <- newIORef 0
@@ -92,4 +92,5 @@ idle gen = do
 
 nGrid :: Int -> Grid -> Grid
 nGrid n g = (nIterations n g)!!(n-1)
+
 

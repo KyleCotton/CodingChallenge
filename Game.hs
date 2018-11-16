@@ -13,7 +13,7 @@ Dead:  3 Friends   -> Alive
        else        -> Dead
 
 -}
-module Game (Grid, Location, theGrid, nIterations, gridToLivingPoints, gridToDeadPoints, aliveStates) where
+module Game (Grid, theGrid, nIterations, gridToLivingPoints, gridToDeadPoints) where
 import Data.List
 
 type Health   = Bool               -- Each Block has an accociated health
