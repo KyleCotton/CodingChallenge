@@ -39,7 +39,9 @@ aliveStates = [(50,50)
               ,(49,50)
               ,(40,40)
               ,(40,41)
-              ,(40,39)]
+              ,(40,39)
+              ,(39,41)
+              ,(38,40)]
 
 
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids
