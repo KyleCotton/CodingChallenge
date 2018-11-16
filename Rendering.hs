@@ -38,7 +38,7 @@ makeSquares :: [Point] -> [Point]
 makeSquares lst = concat [makeSquare (2/gridWidth) point | point<-lst]
 
 gens :: [Grid]
-gens = nIterations 10 startPeople
+gens = nIterations 10 theGrid
 
 main :: IO ()
 main = do
