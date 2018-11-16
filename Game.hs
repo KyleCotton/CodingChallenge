@@ -37,12 +37,10 @@ aliveStates = [(50,50)
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids 
 nIterations n g = take n $ iterate (nextGen) g   --   after n iterations
 
-gridToLivingPoints :: Grid -> [Location]                     -- This returns a list of locations
+gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]                     -- This returns a list of locations
+
 gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]  --    of alive points
-
-gridToDeadPoints :: Grid -> [Location]                     -- This returns a list of locations
 gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]  --    of alive points
-
 
 nextGen :: Grid -> Grid                                  -- This maps the next function over
 nextGen gss = map (\p@(h, l) -> (isAlive p gss, l)) gss  --     the entire grid of people
