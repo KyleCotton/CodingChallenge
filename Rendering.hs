@@ -38,7 +38,7 @@ makeSquares :: [Point] -> [Point]
 makeSquares lst = concat [makeSquare (2/gridWidth) point | point<-lst]
 
 gens :: [Grid]
-gens = nIterations 10 theGrid
+gens = nIterations 10 theOtherGrid
 
 main :: IO ()
 main = do
@@ -78,7 +78,7 @@ display population generation  = do
     mapM_ (\(x, y) -> vertex $ Vertex2 x y) (makeSquares . mapPoints $ gridToLivingPoints (population !! gen))
   flush
   --limits the frame rate to 60 fps
-  --threadDelay (1000000)
+  threadDelay (1000000)
   --tells the double buffer to update
   swapBuffers
 
