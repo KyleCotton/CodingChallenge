@@ -45,12 +45,11 @@ aliveStates = [(50,50)
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids
 nIterations n g = take n $ iterate (nextGen) g   --   after n iterations
 
-gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]                     -- This returns a list of locations
-
+gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]
 gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]
 gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]
 
-nextGen :: Grid -> Grid                                  -- This maps the next function over
+nextGen :: Grid -> Grid
 nextGen gss = filter (\steve -> isAlive steve gss) (map (\p@(h, l) -> (isAlive p gss, l))
                                                     ( gss ++
                                                       [ (False,local) |
