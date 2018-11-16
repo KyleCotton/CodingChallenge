@@ -51,8 +51,8 @@ pointToVec :: Point -> Vector
 pointToVec (x,y,z) = [x,y,z]
 
 --Takes in a vecotr and an anple and returns the vector rotated around the origin by the given angle
-rotateX :: Angle -> Vector -> Vector
-rotateX t m = multMatVec (rotationX t) m
+rotateX :: Angle -> Point -> Point
+rotateX t m = vecToPoint (multMatVec (rotationX t) (pointToVec m))
 
 rotationX t = [[1,0,0],
               [0,cos (radians t), -sin (radians t)],
@@ -87,42 +87,20 @@ radians t =  t * 2 * pi / 360
 rotatePoints :: Angle -> [Point] -> [Point]
 rotatePoints theta pts = [ vecToPoint . (rotateZ theta) $ pointToVec pt| pt <- pts]
 
---mapPoints :: [Point] -> [Point]
---mapPoints lst = [(((x-xOffset)/xOffset)+(1/gridWidth), -(((y-yOffset)/yOffset) + (1/gridWidth))) | (y,x)<-lst]
- -- where
-   -- xOffset = (gridWidth/2)
-   -- yOffset = (gridHight/2)
-
 makeCubes :: [Point] -> [Point]
 makeCubes lst = concat [makeCube (1) point | point<-lst]
 
 subVectors :: Vector -> Vector -> Vector
 subVectors v1 v2 = [(v1 !! a) - (v2 !! a) | a <- [0..(length v1 - 1)]]
 
-projects :: (Angle, Angle, Angle) -> [Point] -> [Point2D]
-projects angles points = map (project angles [5,5,5] [0,0,0.1]) (map pointToVec points)
+projects :: GLfloat -> [Point] -> [Point2D]
+projects distance points = map (project distance) points
 
---project :: (Angle, Angle, Angle) -> [Point] -> [Point] -> [Point] -> [Point2D]
---project (ax, ay, az) pointPos camPos =  multMatVec  (multiplyMat (multiplyMat (cRotationX ax) (rotationY ay)) (cRotationZ az)) (subVectors pointPos camPos)
-
-project :: (Angle, Angle, Angle) -> Vector -> Vector -> Vector -> Point2D
-project (ax, ay, az) camPos disPos pointPos = proj $ vecToPoint (subVectors pointPos camPos)
+project :: GLfloat -> Point -> Point2D
+project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec point)
   where
-    get2DPoints (dx', dy', dz') (ex, ey, ez) = ((ez/dz')*dx' + ex, (ez/dz')*dy' + ey)
-    proj points  = get2DPoints (dx points , dy points, dz points) (vecToPoint disPos)
-    cx = cos(radians ax)
-    cy = cos(radians ay)
-    cz = cos(radians az)
-    sx = sin(radians ax)
-    sy = sin(radians ay)
-    sz = sin(radians az)
-    dx (x,y,z) = (cy*(sz*y + cz*x) - sy*z)
-    dy (x,y,z) = (sx*(cy*z + sy*(sz*y + cz*x)) + cx*(cz*y - sz*x))
-    dz (x,y,z) = (cx*(cy*z + sy*(sz*y + cz*x)) - sx*(cz*y - sz*x))
-
---prop_projects :: (Angle, Angle, Angle) -> Vector -> Vector -> Property
---prop_projects angles pointP camP = length pointP == 3 && length camP == 3 ==> (project angles pointP camP) == (project' angles pointP camP)
-
+    proj (x, y, z) = [[1/(distance - z),0,0],[0,1/(distance - z),0]]
+    vec2DToPoint2D (x:n:ns) = (x,n)
 
 main :: IO ()
 main = do
@@ -135,11 +113,11 @@ main = do
   enterGameMode
   reshapeCallback $= Just reshape
   --creates a mutatable variable for the angle of rotation
-  cameraAngle <- newIORef (90, 90, 90)
+  angle <- newIORef 0
   --displays points
-  displayCallback $= (display cameraAngle)
+  displayCallback $= (display angle)
   --makes changes
-  idleCallback $= Just (idle cameraAngle)
+  idleCallback $= Just (idle angle)
   mainLoop
 
 reshape :: ReshapeCallback
@@ -148,20 +126,20 @@ reshape size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef (Angle, Angle, Angle) -> DisplayCallback
-display cameraAngle = do
+display :: IORef GLfloat -> DisplayCallback
+display angle = do
   --helper function that creates a color
   let color3f r g b = color $ Color3 r g (b :: GLfloat)
   --clears the color buffer
   clear [ ColorBuffer ]
   --gets the value of the mutatable variable and stores it as angle'
-  angle' <- readIORef cameraAngle
+  angle' <- readIORef angle
   --renders groups of four vertexs as squares
   renderPrimitive Points $ do
     --sets the color to red
     color3f 1 0 0
     --takes a list of points and converts them to vertexs
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) ((projects angle') $ makeCubes myPoints)
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) ((projects 2) $ map (rotateX angle') (makeCubes myPoints))
   flush
   --limits the frame rate to 60 fps
   threadDelay (1000000 `div` 60)
@@ -169,17 +147,16 @@ display cameraAngle = do
   swapBuffers
 
 --makes changes to variables as needed
-idle :: IORef (Angle, Angle, Angle) -> IdleCallback
+idle :: IORef GLfloat -> IdleCallback
 idle angle = do
   --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
   --sets the balue of the mutatble variabel to (angle' + 0.05) mod 360
-  writeIORef angle (getNewAngs angle')
+  writeIORef angle (getNewAng angle')
   postRedisplay Nothing
     where
       newAng angles = angles + 0.05
       getNewAng ang = if (newAng ang) > 360 then (newAng ang) - 360 else (newAng ang)
-      getNewAngs (a1, a2, a3) = (getNewAng a1, getNewAng a2, getNewAng a3)
 
 
 
