@@ -58,11 +58,24 @@ main = do
   enterGameMode
   reshapeCallback $= Just reshape
   generation <- newIORef 0
+  run <- newIORef True
   --displays points
   displayCallback $= (display gens generation)
-  --makes changes
-  idleCallback $= Just (idle generation)
+  --checks wheter to change generation by looking at user input
+  keyboardMouseCallback $= Just (keyboardMouse run)
+  --chages to the next generation
+  idleCallback $= Just (idle run generation)
   mainLoop
+
+--if the user presses the space bar, change the next generation 'flag' to false
+keyboardMouse :: IORef Bool -> KeyboardMouseCallback
+--if a key is pressed
+keyboardMouse run key Down _ _ =  do
+  run' <- readIORef run
+  --if that key is the spacebar invert the vlaue of the next generation 'flag' otherwise do nothing
+  if key == (Char ' ') then (writeIORef run (not run')) else return ()
+--if no key is pressed do nothing
+keyboardMouse _ _ _ _ _  = return ()
 
 reshape :: ReshapeCallback
 reshape size = do
@@ -90,16 +103,13 @@ display population generation  = do
   swapBuffers
 
 --changes the current generation by 1
-idle :: IORef Int -> IdleCallback
-idle gen = do
+idle :: IORef Bool -> IORef Int -> IdleCallback
+idle run gen = do
   gen' <- readIORef gen
-  writeIORef gen (nextGen gen')
+  run' <- readIORef run
+  --if the next generation 'flag' is true then move to the next generation otherwise do nothing
+  if run' then writeIORef gen (nextGen gen') else return ()
   postRedisplay Nothing
     where
-      nextGen curGen = if curGen == (length gens-1) then 0 else curGen + 1
-
-
-nGrid :: Int -> Grid -> Grid
-nGrid n g = (nIterations n g)!!(n-1)
-
-
+      --moves to the next generation then when it gets to the last generation it goes back to the start
+      nextGen curGen = (curGen + 1) `mod` (length gens-1)
