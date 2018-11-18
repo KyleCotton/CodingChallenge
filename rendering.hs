@@ -8,7 +8,7 @@ import Control.Concurrent
 import Game
 
 myPoints :: [Point]
-myPoints = [(1,1,1),(0,0,0),(-1,-1,-1),(1,1,-1),(-1,1,1),(-5,-3,-4)]
+myPoints = [(0,0,0)]--[(1,1,1),(0,0,0),(-1,-1,-1),(1,1,-1),(-1,1,1),(-5,-3,-4)]
 
 type Matrix = [[GLfloat]]
 type Vector = [GLfloat]
@@ -23,8 +23,8 @@ gridHight :: Float
 gridHight = 100
 
 --takes a size and a center point and creates a cube at that center point (and returns it's center for 'sorting' later)
-makeCube :: (GLfloat, GLfloat, GLfloat) -> GLfloat -> Point -> [Point]
-makeCube angle size center = moveCube (rotate angle byOrigin) center
+makeCube :: Matrix -> GLfloat -> Point -> [Point]
+makeCube mat size center = moveCube (rotate mat byOrigin) center
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
@@ -39,8 +39,8 @@ moveCube :: [Point] -> Point -> [Point]
 moveCube xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
 
 --takes a list of center points and makes a cube-center pair for each of them
-makeCubes :: (GLfloat, GLfloat, GLfloat) -> [Point] -> [[Point]]
-makeCubes angle lst = [(makeCube angle 1 point) | point<-lst]
+makeCubes :: Matrix -> [Point] -> [[Point]]
+makeCubes mat lst = [(makeCube mat 1 point) | point<-lst]
 
 --Takes two matrices and multiplies them
 multiplyMat :: Matrix -> Matrix -> Matrix
@@ -61,10 +61,10 @@ pointToVec :: Point -> Vector
 pointToVec (x,y,z) = [x,y,z]
 
 --Takes in a cube-center pair and rotate both around the origin a given angle using a given rotation matrix 
-rotate :: (Angle,Angle,Angle) -> [Point] -> [Point]
-rotate (xt, yt, zt) m = [rot s | s <- m]
+rotate :: Matrix -> [Point] -> [Point]
+rotate  mat  m = [rot s | s <- m]
   where
-    rot x = vecToPoint (multMatVec (multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))) (pointToVec x))
+    rot x = vecToPoint (multMatVec mat (pointToVec x))
 
 --give roation matrix for rotation around the X axis by a given angle
 rotationX :: GLfloat -> Matrix
@@ -163,6 +163,9 @@ exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam p
   where
     ptToO = (getDist 0 pt)
 
+getRotations :: (GLfloat, GLfloat, GLfloat) -> Matrix
+getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
+
 --displays the points as a loop
 display :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
 display distance angle = do
@@ -173,13 +176,14 @@ display distance angle = do
   --gets the value of the mutatable variable and stores it as angle'
   dist <- readIORef distance
   angle' <- readIORef angle
+  let mat = getRotations angle'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
     --sets the color to red
     color3f 1 1 1
     --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
     -- then takes each new 2D point and draws it
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ ((makeCubes angle'). (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate angle' myPoints)))
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ ((makeCubes mat). (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate mat myPoints)))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
