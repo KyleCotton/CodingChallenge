@@ -2,13 +2,13 @@ module Rendering where
 
 import Data.List
 import Test.QuickCheck
-import Graphics.UI.GLUT hiding (Matrix, Angle, project)
+import Graphics.UI.GLUT hiding (Matrix, Angle, project, rotate)
 import Data.IORef
 import Control.Concurrent
 import Game
 
 myPoints :: [Point]
-myPoints = [(0,0,0)]
+myPoints = [(1,1,1),(0,0,0),(-1,-1,-1)]
 
 type Matrix = [[GLfloat]]
 type Vector = [GLfloat]
@@ -22,15 +22,21 @@ gridWidth = 100
 gridHight :: Float
 gridHight = 100
 
-makeCube :: GLfloat -> Point -> [Point]
-makeCube size center = moveCube byOrigin center
+--takes a size and a center point and creates a cube at that center point (and returns it's center for 'sorting' later)
+makeCube :: GLfloat -> Point -> ([Point], Point)
+makeCube size center = (moveCube byOrigin center, center)
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius')]
     radius' = (size/ 2)
 
+--takes a list of points (a cube at the origin) and other point (the cube's center) and addeds the singel point to each point in the list (moves the cube to the point)
 moveCube :: [Point] -> Point -> [Point]
 moveCube xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
+
+--takes a list of center points and makes a cube-center pair for each of them
+makeCubes :: [Point] -> [([Point], Point)]
+makeCubes lst = [(makeCube (1) point) | point<-lst]
 
 --Takes two matrices and multiplies them
 multiplyMat :: Matrix -> Matrix -> Matrix
@@ -50,57 +56,83 @@ vecToPoint (x:y:z:ns) = (x,y,z)
 pointToVec :: Point -> Vector
 pointToVec (x,y,z) = [x,y,z]
 
---Takes in a vecotr and an anple and returns the vector rotated around the origin by the given angle
-rotateX :: Angle -> Point -> Point
-rotateX t m = vecToPoint (multMatVec (rotationX t) (pointToVec m))
+--Takes in a cube-center pair and rotate both around the origin a given angle using a given rotation matrix 
+rotate :: Angle  -> (GLfloat -> Matrix) -> ([Point], Point) -> ([Point], Point)
+rotate t mat (m,n) = ([rot s | s <- m], rot n)
+  where
+    rot x = vecToPoint (multMatVec (mat t) (pointToVec x))
 
+--give roation matrix for rotation around the X axis by a given angle
+rotationX :: GLfloat -> Matrix
 rotationX t = [[1,0,0],
               [0,cos (radians t), -sin (radians t)],
               [0,sin (radians t), cos (radians t)]]
 
-cRotationX t = [[1,0,0],
-              [0,cos (radians t), sin (radians t)],
-              [0,-sin (radians t), cos (radians t)]]
-
-rotateY :: Angle -> Vector -> Vector
-rotateY t m = multMatVec (rotationY t) m
-
+--give roation matrix for rotation around the Y axis by a given angle
+rotationY :: GLfloat -> Matrix
 rotationY t = [[cos (radians t), 0, -sin (radians t)],
               [0,1,0],
               [sin (radians t), 0, cos (radians t)]]
 
-rotateZ :: Angle -> Vector -> Vector
-rotateZ t m = multMatVec (rotationZ t) m
-
+--give roation matrix for rotation around the Z axis by a given angle
+rotationZ :: GLfloat -> Matrix
 rotationZ t = [[cos (radians t), -sin (radians t), 0],
               [sin (radians t), cos (radians t),0],
               [0,0,1]]
 
-cRotationZ t = [[cos (radians t), sin (radians t), 0],
-              [-sin (radians t), cos (radians t),0],
-              [0,0,1]]
-
+--takes in an angle in degrees and return the equivalent in radians
 radians :: Floating a => a -> a
 radians t =  t * 2 * pi / 360
 
---Takes an angle and list of points and rotates each of the poins around the origin
-rotatePoints :: Angle -> [Point] -> [Point]
-rotatePoints theta pts = [ vecToPoint . (rotateZ theta) $ pointToVec pt| pt <- pts]
-
-makeCubes :: [Point] -> [Point]
-makeCubes lst = concat [makeCube (1) point | point<-lst]
-
+--subtracts one vector from another
 subVectors :: Vector -> Vector -> Vector
 subVectors v1 v2 = [(v1 !! a) - (v2 !! a) | a <- [0..(length v1 - 1)]]
 
+--projects a list of 3D points into 2D
 projects :: GLfloat -> [Point] -> [Point2D]
 projects distance points = map (project distance) points
 
+--takes a 3D point and projects it using a projection matrix (created for that point to create the illusing of perspecive)
 project :: GLfloat -> Point -> Point2D
 project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec point)
   where
     proj (x, y, z) = [[1/(distance - z),0,0],[0,1/(distance - z),0]]
     vec2DToPoint2D (x:n:ns) = (x,n)
+
+--Gets the distance from a point to the camera (camera is always (0,0,z))
+getDist :: GLfloat -> Point -> GLfloat
+getDist cam (x,y,z) = sqrt(x*x + y*y + (cam-z)**2)
+
+--Orders squares in distance from the camera (so that ones further away get draw first and then closer ones on top of them )
+orderSquares :: GLfloat -> [([Point], Point)] -> [[Point]]
+orderSquares cam lst = [ps | (ps,c)<- msort 5 (findDists)]
+  where
+    findDists = [(n, getDist cam s) | (n,s) <- lst]
+
+isort :: [([Point], GLfloat)] -> [([Point], GLfloat)]
+isort = foldr insert []
+  where
+  insert :: ([Point], GLfloat) -> [([Point], GLfloat)] -> [([Point], GLfloat)]
+  insert x []                    =  [x]
+  insert (x,s) ((y,n) : ys) | s >= n     =  (x,s) : (y,n) : ys
+                    | otherwise  =  (y,n) : insert (x,s) ys
+
+msort :: Int -> [([Point], GLfloat)] -> [([Point], GLfloat)]
+msort k xs | length xs <= k  =  isort xs
+           | otherwise       =  merge (msort k (take m xs))
+                                      (msort k (drop m xs))
+  where
+  m = length xs `div` 2
+  merge :: [([Point], GLfloat)] -> [([Point], GLfloat)] -> [([Point], GLfloat)]
+  merge xs []                      =  xs
+  merge [] ys                      =  ys
+  merge ((x,s):xs) ((y,n) : ys) | s >= n     =  (x,s) : merge xs ((y,n) : ys)
+                      | otherwise  =  (y,n) : merge ((x,s):xs) ys
+
+--takes a cube and gets rid of the corner furthest from the camer
+--(does this as a form of culling as there will always by one corner (and 3 sides) that can't be seen and so don't need to be drawn)
+culling :: [Point] -> [Point]
+culling lst = undefined
 
 main :: IO ()
 main = do
@@ -114,8 +146,9 @@ main = do
   reshapeCallback $= Just reshape
   --creates a mutatable variable for the angle of rotation
   angle <- newIORef 0
+  distance <- newIORef 4
   --displays points
-  displayCallback $= (display angle)
+  displayCallback $= (display distance angle)
   --makes changes
   idleCallback $= Just (idle angle)
   mainLoop
@@ -126,36 +159,39 @@ reshape size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef GLfloat -> DisplayCallback
-display angle = do
+display :: IORef GLfloat -> IORef GLfloat -> DisplayCallback
+display distance angle = do
   --helper function that creates a color
   let color3f r g b = color $ Color3 r g (b :: GLfloat)
   --clears the color buffer
   clear [ ColorBuffer ]
   --gets the value of the mutatable variable and stores it as angle'
+  dist <- readIORef distance
   angle' <- readIORef angle
   --renders groups of four vertexs as squares
   renderPrimitive Points $ do
     --sets the color to red
     color3f 1 1 1
-    --takes a list of points and converts them to vertexs
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) ((projects 2) $ map (rotateX angle') (makeCubes myPoints))
+    --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
+    -- then takes each new 2D point and draws it
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat. (map (projects dist)) . (orderSquares dist) $ map (rotate angle' (rotationY)) (makeCubes myPoints))
   flush
-  --limits the frame rate to 60 fps
+  --limits the frame rate
   threadDelay (1000 `div` 20)
   --tells the double buffer to update
   swapBuffers
 
---makes changes to variables as needed
+--changes the angle of rotation by 0.5 degrees each time it's called
 idle :: IORef GLfloat -> IdleCallback
 idle angle = do
   --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
-  --sets the balue of the mutatble variabel to (angle' + 0.05) mod 360
+  --sets the balue of the mutatble variable to (angle' + 0.05) mod 360
   writeIORef angle (getNewAng angle')
   postRedisplay Nothing
     where
       newAng angles = angles + 0.05
+      --makeshift mod 360 for floating point as i couldn't get `mod` to work
       getNewAng ang = if (newAng ang) > 360 then (newAng ang) - 360 else (newAng ang)
 
 
