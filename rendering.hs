@@ -8,7 +8,7 @@ import Control.Concurrent
 import Game
 
 myPoints :: [Point]
-myPoints = [(1,1,1),(0,0,0),(-1,-1,-1)]
+myPoints = [(1,1,1),(0,0,0),(-1,-1,-1),(1,1,-1),(-1,1,1),(-5,-3,-4)]
 
 type Matrix = [[GLfloat]]
 type Vector = [GLfloat]
@@ -23,8 +23,8 @@ gridHight :: Float
 gridHight = 100
 
 --takes a size and a center point and creates a cube at that center point (and returns it's center for 'sorting' later)
-makeCube :: GLfloat -> Point -> ([Point], Point)
-makeCube size center = (moveCube byOrigin center, center)
+makeCube :: GLfloat -> Point -> [Point]
+makeCube size center = moveCube byOrigin center
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
@@ -39,7 +39,7 @@ moveCube :: [Point] -> Point -> [Point]
 moveCube xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
 
 --takes a list of center points and makes a cube-center pair for each of them
-makeCubes :: [Point] -> [([Point], Point)]
+makeCubes :: [Point] -> [[Point]]
 makeCubes lst = [(makeCube (1) point) | point<-lst]
 
 --Takes two matrices and multiplies them
@@ -61,8 +61,8 @@ pointToVec :: Point -> Vector
 pointToVec (x,y,z) = [x,y,z]
 
 --Takes in a cube-center pair and rotate both around the origin a given angle using a given rotation matrix 
-rotate :: Angle  -> (GLfloat -> Matrix) -> ([Point], Point) -> ([Point], Point)
-rotate t mat (m,n) = ([rot s | s <- m], rot n)
+rotate :: Angle  -> (GLfloat -> Matrix) -> [Point] -> [Point]
+rotate t mat m = [rot s | s <- m]
   where
     rot x = vecToPoint (multMatVec (mat t) (pointToVec x))
 
@@ -107,31 +107,14 @@ project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec p
 getDist :: GLfloat -> Point -> GLfloat
 getDist cam (x,y,z) = sqrt(x*x + y*y + (cam-z)**2)
 
---Orders squares in distance from the camera (so that ones further away get draw first and then closer ones on top of them )
-orderSquares :: GLfloat -> [([Point], Point)] -> [[Point]]
-orderSquares cam lst = [ps | (ps,c)<- msort 5 (findDists)]
+orderPoints :: GLfloat -> [Point] -> [Point]
+orderPoints cam lst = sortBy comparePoints lst
   where
-    findDists = [(n, getDist cam s) | (n,s) <- lst]
-
-isort :: [([Point], GLfloat)] -> [([Point], GLfloat)]
-isort = foldr insert []
-  where
-  insert :: ([Point], GLfloat) -> [([Point], GLfloat)] -> [([Point], GLfloat)]
-  insert x []                    =  [x]
-  insert (x,s) ((y,n) : ys) | s >= n     =  (x,s) : (y,n) : ys
-                    | otherwise  =  (y,n) : insert (x,s) ys
-
-msort :: Int -> [([Point], GLfloat)] -> [([Point], GLfloat)]
-msort k xs | length xs <= k  =  isort xs
-           | otherwise       =  merge (msort k (take m xs))
-                                      (msort k (drop m xs))
-  where
-  m = length xs `div` 2
-  merge :: [([Point], GLfloat)] -> [([Point], GLfloat)] -> [([Point], GLfloat)]
-  merge xs []                      =  xs
-  merge [] ys                      =  ys
-  merge ((x,s):xs) ((y,n) : ys) | s >= n     =  (x,s) : merge xs ((y,n) : ys)
-                      | otherwise  =  (y,n) : merge ((x,s):xs) ys
+    comparePoints p1 p2 = comp (getDist cam p1) (getDist cam p2)
+    comp a b
+      | a > b = GT
+      | a < b = LT
+      | otherwise = EQ
 
 --takes a cube and gets rid of the corner furthest from the camer
 --(does this as a form of culling as there will always by one corner (and 3 sides) that can't be seen and so don't need to be drawn)
@@ -191,7 +174,7 @@ display distance angle = do
     color3f 1 1 1
     --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
     -- then takes each new 2D point and draws it
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist) . (orderSquares dist) $ map (rotate angle' (rotationY)) (makeCubes myPoints))
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ map (rotate angle' (rotationY)) (makeCubes . (orderPoints dist) $ filter (\(x,y,z) -> z < dist) myPoints))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
