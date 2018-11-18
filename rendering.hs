@@ -1,6 +1,6 @@
 module Rendering where
 
-import Data.List
+import Data.List hiding (group)
 import Test.QuickCheck
 import Graphics.UI.GLUT hiding (Matrix, Angle, project, rotate)
 import Data.IORef
@@ -27,7 +27,11 @@ makeCube :: GLfloat -> Point -> ([Point], Point)
 makeCube size center = (moveCube byOrigin center, center)
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
-                (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius')]
+                (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
+                (radius', radius', radius'), (radius', radius', -radius'), (radius', -radius', -radius'), (radius', -radius', radius'),
+                (-radius', radius', radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (-radius', -radius', radius'),
+                (radius', radius', radius'), (-radius', radius', radius'), (-radius', radius', -radius'), (radius', radius', -radius'),
+                (radius', -radius', radius'), (-radius', -radius', radius'), (-radius', -radius', -radius'), (radius', -radius', -radius')]
     radius' = (size/ 2)
 
 --takes a list of points (a cube at the origin) and other point (the cube's center) and addeds the singel point to each point in the list (moves the cube to the point)
@@ -131,8 +135,21 @@ msort k xs | length xs <= k  =  isort xs
 
 --takes a cube and gets rid of the corner furthest from the camer
 --(does this as a form of culling as there will always by one corner (and 3 sides) that can't be seen and so don't need to be drawn)
-culling :: [Point] -> [Point]
-culling lst = undefined
+culling :: GLfloat -> [[Point]] -> [[[Point]]]
+culling cam lst = [[face | face <- faces, not ((farPoint.concat $ take 2 faces) `elem` face)]| faces <- world]
+  where
+    farPoint = maximumBy comparePoints
+    comparePoints p1 p2 = comp (getDist cam p1) (getDist cam p2)
+    comp a b
+      | a > b = GT
+      | a < b = LT
+      | otherwise = EQ
+    world = map (group 6) lst
+
+group :: Int -> [a] -> [[a]]
+group _ [] = []
+group 6 lst = (take 4 lst):group 5 (drop 4 lst)
+group n lst = (take 4 lst):group (n-1) (drop 4 lst)
 
 main :: IO ()
 main = do
@@ -169,12 +186,12 @@ display distance angle = do
   dist <- readIORef distance
   angle' <- readIORef angle
   --renders groups of four vertexs as squares
-  renderPrimitive Points $ do
+  renderPrimitive Quads $ do
     --sets the color to red
     color3f 1 1 1
     --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
     -- then takes each new 2D point and draws it
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat. (map (projects dist)) . (orderSquares dist) $ map (rotate angle' (rotationY)) (makeCubes myPoints))
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist) . (orderSquares dist) $ map (rotate angle' (rotationY)) (makeCubes myPoints))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
