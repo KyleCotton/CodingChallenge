@@ -158,6 +158,11 @@ reshape size = do
   viewport $= (Position 0 0, size)
   postRedisplay Nothing
 
+exclude :: GLfloat -> Point -> Bool
+exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam pt)))
+  where
+    ptToO = (getDist 0 pt)
+
 --displays the points as a loop
 display :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
 display distance angle = do
@@ -174,7 +179,7 @@ display distance angle = do
     color3f 1 1 1
     --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
     -- then takes each new 2D point and draws it
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ ((makeCubes angle'). (orderPoints dist) $ filter (\(x,y,z) -> z < dist) (rotate angle' myPoints)))
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ ((makeCubes angle'). (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate angle' myPoints)))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
