@@ -23,8 +23,8 @@ gridHight :: Float
 gridHight = 100
 
 --takes a size and a center point and creates a cube at that center point (and returns it's center for 'sorting' later)
-makeCube :: GLfloat -> Point -> [Point]
-makeCube size center = moveCube byOrigin center
+makeCube :: (GLfloat, GLfloat, GLfloat) -> GLfloat -> Point -> [Point]
+makeCube angle size center = moveCube (rotate angle byOrigin) center
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
@@ -39,8 +39,8 @@ moveCube :: [Point] -> Point -> [Point]
 moveCube xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
 
 --takes a list of center points and makes a cube-center pair for each of them
-makeCubes :: [Point] -> [[Point]]
-makeCubes lst = [(makeCube (1) point) | point<-lst]
+makeCubes :: (GLfloat, GLfloat, GLfloat) -> [Point] -> [[Point]]
+makeCubes angle lst = [(makeCube angle 1 point) | point<-lst]
 
 --Takes two matrices and multiplies them
 multiplyMat :: Matrix -> Matrix -> Matrix
@@ -61,10 +61,10 @@ pointToVec :: Point -> Vector
 pointToVec (x,y,z) = [x,y,z]
 
 --Takes in a cube-center pair and rotate both around the origin a given angle using a given rotation matrix 
-rotate :: Angle  -> (GLfloat -> Matrix) -> [Point] -> [Point]
-rotate t mat m = [rot s | s <- m]
+rotate :: (Angle,Angle,Angle) -> [Point] -> [Point]
+rotate (xt, yt, zt) m = [rot s | s <- m]
   where
-    rot x = vecToPoint (multMatVec (mat t) (pointToVec x))
+    rot x = vecToPoint (multMatVec (multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))) (pointToVec x))
 
 --give roation matrix for rotation around the X axis by a given angle
 rotationX :: GLfloat -> Matrix
@@ -145,7 +145,7 @@ main = do
   enterGameMode
   reshapeCallback $= Just reshape
   --creates a mutatable variable for the angle of rotation
-  angle <- newIORef 0
+  angle <- newIORef (0,0,0)
   distance <- newIORef 4
   --displays points
   displayCallback $= (display distance angle)
@@ -159,7 +159,7 @@ reshape size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef GLfloat -> IORef GLfloat -> DisplayCallback
+display :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
 display distance angle = do
   --helper function that creates a color
   let color3f r g b = color $ Color3 r g (b :: GLfloat)
@@ -174,7 +174,7 @@ display distance angle = do
     color3f 1 1 1
     --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
     -- then takes each new 2D point and draws it
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ map (rotate angle' (rotationY)) (makeCubes . (orderPoints dist) $ filter (\(x,y,z) -> z < dist) myPoints))
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ ((makeCubes angle'). (orderPoints dist) $ filter (\(x,y,z) -> z < dist) (rotate angle' myPoints)))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
@@ -182,17 +182,18 @@ display distance angle = do
   swapBuffers
 
 --changes the angle of rotation by 0.5 degrees each time it's called
-idle :: IORef GLfloat -> IdleCallback
+idle :: IORef (GLfloat, GLfloat, GLfloat) -> IdleCallback
 idle angle = do
   --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
   --sets the balue of the mutatble variable to (angle' + 0.05) mod 360
-  writeIORef angle (getNewAng angle')
+  writeIORef angle (gtsangs angle')
   postRedisplay Nothing
     where
       newAng angles = angles + 0.05
       --makeshift mod 360 for floating point as i couldn't get `mod` to work
       getNewAng ang = if (newAng ang) > 360 then (newAng ang) - 360 else (newAng ang)
+      gtsangs (x, y, z) = (x,getNewAng y, z)
 
 
 
