@@ -8,7 +8,7 @@ import Control.Concurrent
 import Game
 
 myPoints :: [Point]
-myPoints = [(0,0,0)]--[(1,1,1),(0,0,0),(-1,-1,-1),(1,1,-1),(-1,1,1),(-5,-3,-4)]
+myPoints = [(1,1,1),(0,0,0),(-1,-1,-1),(1,1,-1),(-1,1,1),(-5,-3,-4)]
 
 type Matrix = [[GLfloat]]
 type Vector = [GLfloat]
@@ -16,13 +16,8 @@ type Point = (GLfloat, GLfloat, GLfloat)
 type Point2D = (GLfloat, GLfloat)
 type Angle = GLfloat
 
-gridWidth :: Float
-gridWidth = 100
-
-gridHight :: Float
-gridHight = 100
-
---takes a size and a center point and creates a cube at that center point (and returns it's center for 'sorting' later)
+--takes a size, a center point and a rotation matrix
+--it creates a cube at that center point (as a list of its faces), rotates it and then moves it to the center point
 makeCube :: Matrix -> GLfloat -> Point -> [Point]
 makeCube mat size center = moveCube (rotate mat byOrigin) center
   where
@@ -38,7 +33,7 @@ makeCube mat size center = moveCube (rotate mat byOrigin) center
 moveCube :: [Point] -> Point -> [Point]
 moveCube xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
 
---takes a list of center points and makes a cube-center pair for each of them
+--takes a list of center points and a rotation matrix makes cubes for all of the centers
 makeCubes :: Matrix -> [Point] -> [[Point]]
 makeCubes mat lst = [(makeCube mat 1 point) | point<-lst]
 
@@ -60,7 +55,7 @@ vecToPoint (x:y:z:ns) = (x,y,z)
 pointToVec :: Point -> Vector
 pointToVec (x,y,z) = [x,y,z]
 
---Takes in a cube-center pair and rotate both around the origin a given angle using a given rotation matrix 
+--Takes in a rotation matrix and a list of points and rotates all of the points using the matrix
 rotate :: Matrix -> [Point] -> [Point]
 rotate  mat  m = [rot s | s <- m]
   where
@@ -107,10 +102,14 @@ project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec p
 getDist :: GLfloat -> Point -> GLfloat
 getDist cam (x,y,z) = sqrt(x*x + y*y + (cam-z)**2)
 
+--takes in a list of center points and sorts them in order of distance from the camera
 orderPoints :: GLfloat -> [Point] -> [Point]
-orderPoints cam lst = sortBy comparePoints lst
+orderPoints cam lst = sortBy (comparePoints cam)lst
+
+--takes in two points and returns their ordering
+comparePoints :: GLfloat ->Point -> Point -> Ordering
+comparePoints cam p1 p2 = comp (getDist cam p1) (getDist cam p2)
   where
-    comparePoints p1 p2 = comp (getDist cam p1) (getDist cam p2)
     comp a b
       | a > b = GT
       | a < b = LT
@@ -121,19 +120,31 @@ orderPoints cam lst = sortBy comparePoints lst
 culling :: GLfloat -> [[Point]] -> [[[Point]]]
 culling cam lst = [[face | face <- faces, not ((farPoint.concat $ take 2 faces) `elem` face)]| faces <- world]
   where
-    farPoint = maximumBy comparePoints
-    comparePoints p1 p2 = comp (getDist cam p1) (getDist cam p2)
-    comp a b
-      | a > b = GT
-      | a < b = LT
-      | otherwise = EQ
+    farPoint = maximumBy (comparePoints cam)
     world = map (group 6) lst
 
+--takes in a list of points and groups them in to groups of 4 points
+--this is the list of points of the cubes and it groups them into the faces 
 group :: Int -> [a] -> [[a]]
 group _ [] = []
 group 6 lst = (take 4 lst):group 5 (drop 4 lst)
 group n lst = (take 4 lst):group (n-1) (drop 4 lst)
 
+--takes a point and the position of the camera (the camera is always at (0,0,_)) and checks if the point is behind the camera
+exclude :: GLfloat -> Point -> Bool
+exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam pt)))
+  where
+    ptToO = (getDist 0 pt)
+
+--takes a tripple of angles and returns the rotation matrix for rotating around the x y and x axis (for each angle respectively)
+getRotations :: (GLfloat, GLfloat, GLfloat) -> Matrix
+getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
+
+--takes in any corner of a cube and gives the distance from the center of that cube to the origin
+distFromO :: Point -> GLfloat
+distFromO (x, y, z) = getDist 0 ((abs x) - 0.5, (abs y) - 0.5, (abs z) - 0.5)
+
+--main
 main :: IO ()
 main = do
   (_progName, _args) <- getArgsAndInitialize
@@ -158,14 +169,6 @@ reshape size = do
   viewport $= (Position 0 0, size)
   postRedisplay Nothing
 
-exclude :: GLfloat -> Point -> Bool
-exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam pt)))
-  where
-    ptToO = (getDist 0 pt)
-
-getRotations :: (GLfloat, GLfloat, GLfloat) -> Matrix
-getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
-
 --displays the points as a loop
 display :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
 display distance angle = do
@@ -181,9 +184,14 @@ display distance angle = do
   renderPrimitive Quads $ do
     --sets the color to red
     color3f 1 1 1
-    --takes a list of points and converts them to cubes, rotates them around the origin, orders them in distance from the camera and projects them into 2D
-    -- then takes each new 2D point and draws it
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist)  $ ((makeCubes mat). (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate mat myPoints)))
+    --takes a list of points and rotates them to where they will be for the 'scene'
+    --then removes points that will be behind the camera
+    --then orders the points in distance to the camera
+    --then makes cubes at each of theses points
+    --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
+    --then projects the points to 2D using a persepective projection matrix
+    -- then converts the points the vertexs
+    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist) . (makeCubes mat) . (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate mat myPoints))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
