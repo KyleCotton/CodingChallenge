@@ -36,12 +36,8 @@ tOG = [ (cond (x,y,z), (fromInteger x, fromInteger y, fromInteger z)) | x <- [0.
 aliveStates :: [Location]  -- A list of locations of the alive states
 aliveStates = [(50,50,50)
               ,(51,50,50)
-              ,(49,50,50)
-              ,(40,40,50)
-              ,(40,41,50)
-              ,(40,39,50)
-              ,(39,41,50)
-              ,(38,40,50)]
+              ,(50,51,50)
+              ,(51,51,50)]
 
 
 nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids
@@ -52,7 +48,7 @@ gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]
 gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]
 
 nextGen :: Grid -> Grid
-nextGen gss = filter (\steve -> isAlive steve gss) (map (\p@(h, l) -> (isAlive p gss, l))
+nextGen gss = filter (\(l, loc) -> l) (map (\p@(h, l) -> (isAlive p gss, l))
                                                     ( gss ++
                                                       [ (False,local) |
                                                       local <- nub zombieLocals,
@@ -65,15 +61,16 @@ getPoints = map (\(p,l) -> l)
 
 zombieLocal :: Location -> [Location]
 --zombieLocal (x,y) = [ (a,b) | a <- [x-1..x+1], b <- [y-1..y+1], not ((a==x)&&(b==y)) ]
-zombieLocal (x,y,z) = [ (a,b,c) | a <- [x-1..x+1], b <- [y-1..y+1], c <- [z-1..z+1], a/=x, b/=y, c/=z ]
+zombieLocal (x,y,z) = [ (a,b,c) | a <- [x-1..x+1], b <- [y-1..y+1], c <- [z-1..z+1], (a,b,c) /= (x,y,z)]
 
 isAlive :: Person -> Grid -> Bool                                                       -- Function that generates the next grid from the previous
 isAlive (h, (x, y, z)) gss = let gs = length [1 |  (h', (x', y', z'))                    --    This fucntion takes in a person and the current grid
-                                                   <- gss, x' `elem` [x-1,x,x+1]  --    if the block is alive and 3 or 2 of its neigbours
+                                                   <- gss
+                                                         , (x',y',z') /= (x,y,z)
+                                                         , x' `elem` [x-1,x,x+1]  --    if the block is alive and 3 or 2 of its neigbours
                                                          , y' `elem` [y-1,y,y+1]  --    are also alive the the block will stay alive.
-                                                         , z' `elem` [z-1,z,z+1]
-                                                         , h',   (x/=x' || y/=y' || z/=z')]  --    if the block is dead and is surrounded by 3 alive
-                                in                                                      --    neigbours then it will become alive.
+                                                         , z' `elem` [z-1,z,z+1]] --    if the block is dead and is surrounded by 3 alive
+                                in                                                --    neigbours then it will become alive.
                                   case h of
-                                    True  -> (gs == 2 || gs == 3)
-                                    False -> (gs == 3)
+                                    True  -> (gs == 9)
+                                    False -> (gs == 4)
