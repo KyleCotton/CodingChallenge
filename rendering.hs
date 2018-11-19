@@ -141,7 +141,8 @@ exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam p
 
 --takes a tripple of angles and returns the rotation matrix for rotating around the x y and x axis (for each angle respectively)
 getRotations :: (GLfloat, GLfloat, GLfloat) -> Matrix
-getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
+getRotations (xt,yt,zt) = (multiplyMat (rotationZ zt) (rotationX xt))
+--getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
 
 --takes in any corner of a cube and gives the distance from the center of that cube to the origin
 distFromO :: Point -> GLfloat
@@ -190,8 +191,9 @@ main = do
   colour <- newIORef 255
   --displays points
   displayCallback $= (display colour distance angle)
+  keyboardMouseCallback $= Just (keyboardMouse distance angle)
   --makes changes
-  idleCallback $= Just (idle colour angle)
+  idleCallback $= Just (idle colour)
   mainLoop
 
 reshape :: Size ->  ReshapeCallback
@@ -226,19 +228,38 @@ display colour distance angle = do
   --tells the double buffer to update
   swapBuffers
 
+keyboardMouse ::  IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
+keyboardMouse dist angles key Down _ _ = case key of
+  --(Char 'w') -> dist $~! (+ (-0.1))
+  --(Char 's') -> dist $~! (+ 0.1)
+  (Char 'w') -> angles $~! (rotX (2))
+  (Char 's') -> angles $~! (rotX (-2))
+  (Char 'd') -> angles $~! (rotY 2)
+  (Char 'a') -> angles $~! (rotY (-2))
+  --(Char '+') -> a $~! (* 2)
+  --(Char '-') -> a $~! (/ 2)
+  --(SpecialKey KeyLeft ) -> p $~! \(x,y) -> (x-0.1,y)
+  --(SpecialKey KeyRight) -> p $~! \(x,y) -> (x+0.1,y)
+  --(SpecialKey KeyUp   ) -> p $~! \(x,y) -> (x,y+0.1)
+  --(SpecialKey KeyDown ) -> p $~! \(x,y) -> (x,y-0.1)
+  _ -> return ()
+  where
+      newVal inc col = col + inc `mod'` 360
+      rotY inc (x, y, z) = (x,newVal inc y, z)
+      rotX inc (x, y, z) = (newVal inc x,y,z)
+keyboardMouse _ _ _ _ _ _ = return ()
+
 --changes the angle of rotation by 0.5 degrees each time it's called
-idle :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> IdleCallback
-idle colour angle = do
-  --gets the value of the mutatable variable and stores it as angle'
-  angle' <- readIORef angle
+idle :: IORef GLfloat -> IdleCallback
+idle colour  = do
+  --gets the value of the mutatable variable colour 
   colour' <- readIORef colour
-  writeIORef colour (newAng colour')
-  --sets the balue of the mutatble variable to (angle' + 0.05) mod 360
-  writeIORef angle (gtsangs angle')
+  --writes the new value of the mutatable variable colour
+  writeIORef colour (newVal colour')
   postRedisplay Nothing
     where
-      newAng angles = angles + 0.05 `mod'` 360
-      gtsangs (x, y, z) = (x,newAng y, z)
+      newVal col = col + 0.05 `mod'` 360
+
 
 
 
