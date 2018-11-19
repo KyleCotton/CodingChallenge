@@ -4,6 +4,7 @@ import Data.List hiding (group)
 import Test.QuickCheck
 import Graphics.UI.GLUT hiding (Matrix, Angle, project, rotate)
 import Data.IORef
+import Data.Fixed
 import Control.Concurrent
 import Game
 
@@ -88,8 +89,10 @@ subVectors :: Vector -> Vector -> Vector
 subVectors v1 v2 = [(v1 !! a) - (v2 !! a) | a <- [0..(length v1 - 1)]]
 
 --projects a list of 3D points into 2D
-projects :: GLfloat -> [Point] -> [Point2D]
-projects distance points = map (project distance) points
+projects :: GLfloat -> [(GLfloat, [[Point]])] -> [(GLfloat, [[Point2D]])]
+projects distance pts = map proj pts
+  where
+    proj (colour, points) = (colour, map (map (project distance)) points)
 
 --takes a 3D point and projects it using a projection matrix (created for that point to create the illusing of perspecive)
 project :: GLfloat -> Point -> Point2D
@@ -104,7 +107,7 @@ getDist cam (x,y,z) = sqrt(x*x + y*y + (cam-z)**2)
 
 --takes in a list of center points and sorts them in order of distance from the camera
 orderPoints :: GLfloat -> [Point] -> [Point]
-orderPoints cam lst = sortBy (comparePoints cam)lst
+orderPoints cam lst = reverse (sortBy (comparePoints cam)lst)
 
 --takes in two points and returns their ordering
 comparePoints :: GLfloat ->Point -> Point -> Ordering
@@ -142,7 +145,33 @@ getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt)
 
 --takes in any corner of a cube and gives the distance from the center of that cube to the origin
 distFromO :: Point -> GLfloat
-distFromO (x, y, z) = getDist 0 ((abs x) - 0.5, (abs y) - 0.5, (abs z) - 0.5)
+distFromO (x, y, z) = getDist 0 ((abs x)- 0.5, (abs y) - 0.5, (abs z) - 0.5)
+
+hsbToColour :: GLfloat -> IO ()
+hsbToColour h = (\(r,g,b) -> color3f r g b) $  getPrimes h
+  where
+    x = (1 - abs(((h/60) `mod'` 2 - 1)))
+    getPrimes h
+      | (h < 60) = (1,x,0)
+      | (h >= 60 && h < 120) = (x,1,0)
+      | (h >= 120 && h < 180) = (0,1,x)
+      | (h >= 180 && h < 240) = (0,x,1)
+      | (h >= 240 && h < 300) = (x,0,1)
+      | otherwise = (1,0,x)
+
+color3f r g b = color $ Color3 r g (b :: GLfloat)
+
+squareColour :: GLfloat -> [[[Point]]] -> [(GLfloat, [[Point]])]
+squareColour offset lst = [(val s, s) | s <- lst ]
+  where
+    val ns = (mod' ((+ offset) . (20 *) . distFromO . head $ head ns)  360)
+
+drawSquare :: [[Point2D]] -> IO ()
+drawSquare lst = mapM_ (\(x, y) -> vertex $ Vertex2 x y)  (concat lst)
+
+getIO :: (GLfloat, [[Point2D]]) -> IO ()
+getIO (col, pts) = do hsbToColour col
+                      drawSquare pts
 
 --main
 main :: IO ()
@@ -154,36 +183,35 @@ main = do
   --creates a window
   createWindow "Game Of Life"
   enterGameMode
-  reshapeCallback $= Just reshape
+  reshapeCallback $= Just (reshape (Size 1000 1000))
   --creates a mutatable variable for the angle of rotation
   angle <- newIORef (0,0,0)
   distance <- newIORef 4
+  colour <- newIORef 255
   --displays points
-  displayCallback $= (display distance angle)
+  displayCallback $= (display colour distance angle)
   --makes changes
-  idleCallback $= Just (idle angle)
+  idleCallback $= Just (idle colour angle)
   mainLoop
 
-reshape :: ReshapeCallback
-reshape size = do
-  viewport $= (Position 0 0, size)
+reshape :: Size ->  ReshapeCallback
+reshape newsize size = do
+  viewport $= (Position 0 0, newsize)
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
-display distance angle = do
+display :: IORef GLfloat -> IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
+display colour distance angle = do
   --helper function that creates a color
-  let color3f r g b = color $ Color3 r g (b :: GLfloat)
   --clears the color buffer
   clear [ ColorBuffer ]
   --gets the value of the mutatable variable and stores it as angle'
   dist <- readIORef distance
   angle' <- readIORef angle
+  colour' <- readIORef colour
   let mat = getRotations angle'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
-    --sets the color to red
-    color3f 1 1 1
     --takes a list of points and rotates them to where they will be for the 'scene'
     --then removes points that will be behind the camera
     --then orders the points in distance to the camera
@@ -191,7 +219,7 @@ display distance angle = do
     --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
     --then projects the points to 2D using a persepective projection matrix
     -- then converts the points the vertexs
-    mapM_ (\(x, y) -> vertex $ Vertex2 x y) (concat . concat. (map (map (projects dist))) . (culling dist) . (makeCubes mat) . (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate mat myPoints))
+    mapM_ (getIO) ((projects dist) . (squareColour colour') . (culling dist) . (makeCubes mat) . (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate mat myPoints))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
@@ -199,18 +227,18 @@ display distance angle = do
   swapBuffers
 
 --changes the angle of rotation by 0.5 degrees each time it's called
-idle :: IORef (GLfloat, GLfloat, GLfloat) -> IdleCallback
-idle angle = do
+idle :: IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> IdleCallback
+idle colour angle = do
   --gets the value of the mutatable variable and stores it as angle'
   angle' <- readIORef angle
+  colour' <- readIORef colour
+  writeIORef colour (newAng colour')
   --sets the balue of the mutatble variable to (angle' + 0.05) mod 360
   writeIORef angle (gtsangs angle')
   postRedisplay Nothing
     where
-      newAng angles = angles + 0.05
-      --makeshift mod 360 for floating point as i couldn't get `mod` to work
-      getNewAng ang = if (newAng ang) > 360 then (newAng ang) - 360 else (newAng ang)
-      gtsangs (x, y, z) = (x,getNewAng y, z)
+      newAng angles = angles + 0.05 `mod'` 360
+      gtsangs (x, y, z) = (x,newAng y, z)
 
 
 
