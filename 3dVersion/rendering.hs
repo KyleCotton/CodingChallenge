@@ -96,10 +96,29 @@ projects distance pts = map proj pts
 
 --takes a 3D point and projects it using a projection matrix (created for that point to create the illusing of perspecive)
 project :: GLfloat -> Point -> Point2D
-project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec point)
+project distance point = project' point (0,0,distance) (0,0,0) (0,0,1)
+{-project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec point)
   where
     proj (x, y, z) = [[1/(distance - z),0,0],[0,1/(distance - z),0]]
-    vec2DToPoint2D (x:n:ns) = (x,n)
+    vec2DToPoint2D (x:n:ns) = (x,n)-}
+
+project' :: Point -> Point -> Point -> Point  -> Point2D
+project' (ax, ay, az) (cx, cy, cz) (tx, ty, tz) (ex, ey, ez) = (bx, by)
+  where
+    x = ax - cx
+    y = ay - cy
+    z = az - cz
+    ctx = cos (radians tx)
+    cty = cos (radians ty)
+    ctz = cos (radians tz)
+    stx = sin (radians tx)
+    sty = sin (radians ty)
+    stz = sin (radians tz)
+    dx = cty*(stz*y+ctz*x)-sty*z
+    dy = stx*(cty*z+sty*(stz*y+ctz*x))+ctx*(ctz*y-stz*x)
+    dz = ctx*(cty*z+sty*(stz*y+ctz*x))+stx*(ctz*y-stz*x)
+    bx = (ez/dz)*dx+ex
+    by = (ez/dz)*dy+ey
 
 --Gets the distance from a point to the camera (camera is always (0,0,z))
 getDist :: GLfloat -> Point -> GLfloat
@@ -179,8 +198,9 @@ getIO :: (GLfloat, [[Point2D]]) -> IO ()
 getIO (col, pts) = do hsbToColour col
                       drawCube pts
 
+--determines the number of generations that will be generated
 numOfGens :: Int
-numOfGens = 45
+numOfGens = 55
 
 --gets all generations that will be used of a given grid
 gens :: [Grid]
@@ -195,6 +215,8 @@ gridHight = 100
 gridDepth :: Float
 gridDepth = 100
 
+--takes a list of the locations of living squares (based around 50,50) and moves them to the center of the redering
+--area (0,0)
 mapPoints :: [Point] -> [Point]
 mapPoints lst = [((x-xOffset), -(y-yOffset), (z-zOffset) ) | (x,y,z)<-lst]
   where
@@ -240,28 +262,26 @@ display gen mat' colour distance  pos = do
   clear [ ColorBuffer ]
   --gets the value of the mutatable variable and stores it as angle'
   dist <- readIORef distance
-  --angle' <- readIORef angle
   colour' <- readIORef colour
   pos' <- readIORef pos
   gen' <- readIORef gen
   mat <- readIORef mat'
+  --'prepares' the list of centers by rotating, moving ordering then removing as necsasarry 
   let centers = cens gen' mat dist colour' pos'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
-    --takes a list of points and rotates them to where they will be for the 'scene'
-    --then removes points that will be behind the camera
-    --then orders the points in distance to the camera
-    --then makes cubes at each of theses points
+    --takes a list of prepare centers  makes cubes at each of theses points
     --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
     --then projects the points to 2D using a persepective projection matrix
-    -- then converts the points the vertexs
+    --then converts the points the vertexs and colours
     mapM_ (getIO) ((projects dist) . (squareColour centers colour') . (culling dist) $ (makeCubes mat centers))
   flush
-  --limits the frame rate
-  --threadDelay (1000 `div` 20)
   --tells the double buffer to update
   swapBuffers
     where
+      --takes a list of points and rotates them to where they will be for the 'scene'
+      --then removes points that will be behind the camera
+      --then orders the points in distance to the camera
       cens gen' mat dist colour' pos'= (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat (mapPoints $ gridToLivingPoints (gens !! gen'))) pos'
 
 keyboardMouse ::  IORef Int -> IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
