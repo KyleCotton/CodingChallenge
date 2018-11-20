@@ -1,0 +1,39 @@
+* Inf1-Competition
+** TODO FINISH THE TODO LIST
+- [ ] Find best GUI library
+http://hackage.haskell.org/package/GLUT
+- [ ] Generate Shape
+- [ ] Generate Random Map
+*** 3D rendering
+http://www.cs.tau.ac.il/~dcor/Graphics/adv-slides/Introduction%20to%20rendering%20techniques.pd
+mehtod for controlling rotation: map vertical mouse motion (when mouse down) to rotation on the xy plane and horizontal motion to rotation on the zx plane
+https://lodev.org/cgtutor/raycasting.html
+Doom (Duh)
+3D game of life
+4D geometry
+
+3D game of life where the 'cells' are tesseract (4D cubes) (rotating in the 4th dimension) https://en.wikipedia.org/wiki/Tesseract might need to add extra complexity to the game of life may also need to perform ray tracing we could also do the game of life on the surface of a 4D object or a klien bottle or something
+https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+
+*** Links
+**** TODO Convert From Java Script https://github.com/rithmschool/game-of-life-3d
+DON'T FORGET TO COMMENT THE CODE, IF WE DON'T WE GET 'MARKED DOWN'
+
+**** Creating a GUI application for Haskell https://www.stackbuilders.com/tutorials/haskell/gui-application/
+Go to section where calculator grid is created - could replace buttons with triggered grid squares, click to make alive, etc
+* Todo List
+** TODO Get user input
+- Alive squares
+  - By clicking
+- Get the speed that the program should display generations
+  - Slow
+  - Medium
+  - Fast
+  - Very Fast
+  - Or Slider
+
+** TODO Fix the window scaling
+* Error Message
+c112214:CodingChallenge kyle$ ./Haq
+2018-11-16 19:52:32.712 Haq[60266:3398974] GLUT Warning: The following is a new check for GLUT 3.0; update your code.
+2018-11-16 19:52:32.713 Haq[60266:3398974] GLUT Fatal Error: redisplay needed for window 1, but no display callback.
