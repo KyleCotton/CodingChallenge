@@ -7,11 +7,12 @@ To Compile: ghc Haq.hs
 Toi Run   : ./Haq
 -}
 
-import qualified GuiWindow
+--import qualified GuiWindow
+import qualified Rendering
 
 import System.Environment
 main :: IO ()
-main = GuiWindow.gui
+main = Rendering.main
 
 
  
