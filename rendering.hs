@@ -20,7 +20,7 @@ type Angle = GLfloat
 --takes a size, a center point and a rotation matrix
 --it creates a cube at that center point (as a list of its faces), rotates it and then moves it to the center point
 makeCube :: Matrix -> GLfloat -> Point -> [Point]
-makeCube mat size center = moveCube (rotate mat byOrigin) center
+makeCube mat size center = movePoints (rotate mat byOrigin) center
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
@@ -30,9 +30,9 @@ makeCube mat size center = moveCube (rotate mat byOrigin) center
                 (radius', -radius', radius'), (-radius', -radius', radius'), (-radius', -radius', -radius'), (radius', -radius', -radius')]
     radius' = (size/ 2)
 
---takes a list of points (a cube at the origin) and other point (the cube's center) and addeds the singel point to each point in the list (moves the cube to the point)
-moveCube :: [Point] -> Point -> [Point]
-moveCube xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
+--takes a list of points (a cube at the origin, or list of centers) and other point (the cube's center or movement offset) and addeds the singel point to each point in the list (moves the cube to the point, moves the centers)
+movePoints :: [Point] -> Point -> [Point]
+movePoints xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
 
 --takes a list of center points and a rotation matrix makes cubes for all of the centers
 makeCubes :: Matrix -> [Point] -> [[Point]]
@@ -139,15 +139,18 @@ exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam p
   where
     ptToO = (getDist 0 pt)
 
---takes a tripple of angles and returns the rotation matrix for rotating around the x y and x axis (for each angle respectively)
-getRotations :: (GLfloat, GLfloat, GLfloat) -> Matrix
-getRotations (xt,yt,zt) = (multiplyMat (rotationZ zt) (rotationX xt))
+--takes a tripple of angles and returns the rotation matrix for rotating around the x and y axis (for each angle respectively)
+--limited to x and y as those are the only two useful axis for roation (here) this also reduces the amout of
+--matrix work needed, slightly speeding up the rendering
+getRotations :: (GLfloat, GLfloat) -> Matrix
+getRotations (xt,yt) = (multiplyMat (rotationX xt) (rotationY yt))
 --getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
 
 --takes in any corner of a cube and gives the distance from the center of that cube to the origin
 distFromO :: Point -> GLfloat
 distFromO (x, y, z) = getDist 0 ((abs x)- 0.5, (abs y) - 0.5, (abs z) - 0.5)
 
+--Takes a HSB (Hue Saturation Brightness) value for Hue and converts it to and r g b colour for glut to use
 hsbToColour :: GLfloat -> IO ()
 hsbToColour h = (\(r,g,b) -> color3f r g b) $  getPrimes h
   where
@@ -160,19 +163,25 @@ hsbToColour h = (\(r,g,b) -> color3f r g b) $  getPrimes h
       | (h >= 240 && h < 300) = (x,0,1)
       | otherwise = (1,0,x)
 
+--takes in vlaues for r g and b and returns an colour object glut can use
 color3f r g b = color $ Color3 r g (b :: GLfloat)
 
+--takes a list of squares and returns a list of each square paired with its colour value determined by
+--its distance from the origin and an offset
 squareColour :: GLfloat -> [[[Point]]] -> [(GLfloat, [[Point]])]
 squareColour offset lst = [(val s, s) | s <- lst ]
   where
     val ns = (mod' ((+ offset) . (20 *) . distFromO . head $ head ns)  360)
 
-drawSquare :: [[Point2D]] -> IO ()
-drawSquare lst = mapM_ (\(x, y) -> vertex $ Vertex2 x y)  (concat lst)
+--takes a list of 2D points and returns the vertexs for them
+--specifically takes the points for a cube
+drawCube :: [[Point2D]] -> IO ()
+drawCube lst = mapM_ (\(x, y) -> vertex $ Vertex2 x y)  (concat lst)
 
+--takes a cube colour pair and returns the IO comands to draw that square in the correct colour
 getIO :: (GLfloat, [[Point2D]]) -> IO ()
 getIO (col, pts) = do hsbToColour col
-                      drawSquare pts
+                      drawCube pts
 
 --main
 main :: IO ()
@@ -186,12 +195,13 @@ main = do
   enterGameMode
   reshapeCallback $= Just (reshape (Size 1000 1000))
   --creates a mutatable variable for the angle of rotation
-  angle <- newIORef (0,0,0)
+  angle <- newIORef (0,0)
   distance <- newIORef 4
   colour <- newIORef 255
+  pos <- newIORef (0,0,0)
   --displays points
-  displayCallback $= (display colour distance angle)
-  keyboardMouseCallback $= Just (keyboardMouse distance angle)
+  displayCallback $= (display colour distance angle pos)
+  keyboardMouseCallback $= Just (keyboardMouse distance angle pos)
   --makes changes
   idleCallback $= Just (idle colour)
   mainLoop
@@ -202,8 +212,8 @@ reshape newsize size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef GLfloat -> IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
-display colour distance angle = do
+display :: IORef GLfloat -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
+display colour distance angle pos = do
   --helper function that creates a color
   --clears the color buffer
   clear [ ColorBuffer ]
@@ -211,6 +221,7 @@ display colour distance angle = do
   dist <- readIORef distance
   angle' <- readIORef angle
   colour' <- readIORef colour
+  pos' <- readIORef pos
   let mat = getRotations angle'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
@@ -221,33 +232,29 @@ display colour distance angle = do
     --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
     --then projects the points to 2D using a persepective projection matrix
     -- then converts the points the vertexs
-    mapM_ (getIO) ((projects dist) . (squareColour colour') . (culling dist) . (makeCubes mat) . (orderPoints dist) $ filter (\pt -> exclude dist pt ) (rotate mat myPoints))
+    mapM_ (getIO) ((projects dist) . (squareColour colour') . (culling dist) . (makeCubes mat) . (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat myPoints) pos')
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
   --tells the double buffer to update
   swapBuffers
 
-keyboardMouse ::  IORef GLfloat -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
-keyboardMouse dist angles key Down _ _ = case key of
-  --(Char 'w') -> dist $~! (+ (-0.1))
-  --(Char 's') -> dist $~! (+ 0.1)
+keyboardMouse ::  IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
+keyboardMouse dist angles pos key Down _ _ = case key of
   (Char 'w') -> angles $~! (rotX (2))
   (Char 's') -> angles $~! (rotX (-2))
   (Char 'd') -> angles $~! (rotY 2)
   (Char 'a') -> angles $~! (rotY (-2))
-  --(Char '+') -> a $~! (* 2)
-  --(Char '-') -> a $~! (/ 2)
-  --(SpecialKey KeyLeft ) -> p $~! \(x,y) -> (x-0.1,y)
-  --(SpecialKey KeyRight) -> p $~! \(x,y) -> (x+0.1,y)
-  --(SpecialKey KeyUp   ) -> p $~! \(x,y) -> (x,y+0.1)
-  --(SpecialKey KeyDown ) -> p $~! \(x,y) -> (x,y-0.1)
+  (SpecialKey KeyUp   ) -> dist $~! (+ (-0.1))
+  (SpecialKey KeyDown ) -> dist $~! (+ 0.1)
+  (SpecialKey KeyLeft ) -> pos $~! \(x,y,z) -> (x+0.1,y,z)
+  (SpecialKey KeyRight) -> pos $~! \(x,y,z) -> (x-0.1,y,z)
   _ -> return ()
   where
       newVal inc col = col + inc `mod'` 360
-      rotY inc (x, y, z) = (x,newVal inc y, z)
-      rotX inc (x, y, z) = (newVal inc x,y,z)
-keyboardMouse _ _ _ _ _ _ = return ()
+      rotY inc (x, y) = (x,newVal inc y)
+      rotX inc (x, y) = (newVal inc x,y)
+keyboardMouse _ _ _ _ _ _ _ = return ()
 
 --changes the angle of rotation by 0.5 degrees each time it's called
 idle :: IORef GLfloat -> IdleCallback
