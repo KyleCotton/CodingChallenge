@@ -24,9 +24,9 @@ makeCube mat size center = movePoints (rotate mat byOrigin) center
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
-                (radius', radius', radius'), (radius', radius', -radius'), (radius', -radius', -radius'), (radius', -radius', radius'),
+                (radius', -radius', -radius'), (radius', -radius', radius'), (radius', radius', radius'), (radius', radius', -radius'), 
                 (-radius', radius', radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (-radius', -radius', radius'),
-                (radius', radius', radius'), (-radius', radius', radius'), (-radius', radius', -radius'), (radius', radius', -radius'),
+                (-radius', radius', -radius'), (radius', radius', -radius'),(radius', radius', radius'), (-radius', radius', radius'), 
                 (radius', -radius', radius'), (-radius', -radius', radius'), (-radius', -radius', -radius'), (radius', -radius', -radius')]
     radius' = (size/ 2)
 
@@ -144,11 +144,6 @@ exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam p
 --matrix work needed, slightly speeding up the rendering
 getRotations :: (GLfloat, GLfloat) -> Matrix
 getRotations (xt,yt) = (multiplyMat (rotationX xt) (rotationY yt))
---getRotations (xt,yt,zt) = multiplyMat (rotationZ zt) (multiplyMat (rotationX xt) (rotationY yt))
-
---takes in any corner of a cube and gives the distance from the center of that cube to the origin
-distFromO :: Point -> GLfloat
-distFromO (x, y, z) = getDist 0 ((abs x)- 0.5, (abs y) - 0.5, (abs z) - 0.5)
 
 --Takes a HSB (Hue Saturation Brightness) value for Hue and converts it to and r g b colour for glut to use
 hsbToColour :: GLfloat -> IO ()
@@ -166,12 +161,13 @@ hsbToColour h = (\(r,g,b) -> color3f r g b) $  getPrimes h
 --takes in vlaues for r g and b and returns an colour object glut can use
 color3f r g b = color $ Color3 r g (b :: GLfloat)
 
---takes a list of squares and returns a list of each square paired with its colour value determined by
+--takes a list of squares and a list of their centers (in the same order) returns a list of each square paired with its colour value determined by
 --its distance from the origin and an offset
-squareColour :: GLfloat -> [[[Point]]] -> [(GLfloat, [[Point]])]
-squareColour offset lst = [(val s, s) | s <- lst ]
+squareColour :: [Point] ->  GLfloat -> [[[Point]]] -> [(GLfloat, [[Point]])]
+squareColour cents offset lst = [(val (cents !! s), lst !! s) | s <- [0..(length cents - 1)] ]
   where
-    val ns = (mod' ((+ offset) . (20 *) . distFromO . head $ head ns)  360)
+    val :: Point -> GLfloat
+    val ns = (mod' ((+ offset) . (10 *) $ (getDist 0 ns)) 360)
 
 --takes a list of 2D points and returns the vertexs for them
 --specifically takes the points for a cube
@@ -199,9 +195,10 @@ main = do
   distance <- newIORef 4
   colour <- newIORef 255
   pos <- newIORef (0,0,0)
+  mat <- newIORef (getRotations (0,0))
   --displays points
-  displayCallback $= (display colour distance angle pos)
-  keyboardMouseCallback $= Just (keyboardMouse distance angle pos)
+  displayCallback $= (display mat colour distance pos)
+  keyboardMouseCallback $= Just (keyboardMouse mat distance angle pos)
   --makes changes
   idleCallback $= Just (idle colour)
   mainLoop
@@ -212,17 +209,18 @@ reshape newsize size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef GLfloat -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
-display colour distance angle pos = do
+display :: IORef Matrix -> IORef GLfloat -> IORef GLfloat  -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
+display mat' colour distance  pos = do
   --helper function that creates a color
   --clears the color buffer
   clear [ ColorBuffer ]
   --gets the value of the mutatable variable and stores it as angle'
   dist <- readIORef distance
-  angle' <- readIORef angle
+  --angle' <- readIORef angle
   colour' <- readIORef colour
   pos' <- readIORef pos
-  let mat = getRotations angle'
+  mat <- readIORef mat'
+  let centers = cens mat dist colour' pos'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
     --takes a list of points and rotates them to where they will be for the 'scene'
@@ -232,19 +230,33 @@ display colour distance angle pos = do
     --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
     --then projects the points to 2D using a persepective projection matrix
     -- then converts the points the vertexs
-    mapM_ (getIO) ((projects dist) . (squareColour colour') . (culling dist) . (makeCubes mat) . (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat myPoints) pos')
+    mapM_ (getIO) ((projects dist) . (squareColour centers colour') . (culling dist) $ (makeCubes mat centers))
   flush
   --limits the frame rate
   threadDelay (1000 `div` 20)
   --tells the double buffer to update
   swapBuffers
+    where
+      cens mat dist colour' pos'= (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat myPoints) pos'
 
-keyboardMouse ::  IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
-keyboardMouse dist angles pos key Down _ _ = case key of
-  (Char 'w') -> angles $~! (rotX (2))
-  (Char 's') -> angles $~! (rotX (-2))
-  (Char 'd') -> angles $~! (rotY 2)
-  (Char 'a') -> angles $~! (rotY (-2))
+keyboardMouse ::  IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
+keyboardMouse mat dist angles pos key Down _ _ = case key of
+  (Char 'w') -> do
+               (angles $~! (rotX (2)))
+               angles' <- readIORef angles
+               (writeIORef mat (getRotations  angles'))
+  (Char 's') -> do
+               (angles $~! (rotX (-2)))
+               angles' <- readIORef angles
+               (writeIORef mat (getRotations  angles'))
+  (Char 'd') -> do
+               (angles $~! (rotY (2)))
+               angles' <- readIORef angles
+               (writeIORef mat (getRotations  angles'))
+  (Char 'a') -> do
+               (angles $~! (rotY (-2)))
+               angles' <- readIORef angles
+               (writeIORef mat (getRotations  angles'))
   (SpecialKey KeyUp   ) -> dist $~! (+ (-0.1))
   (SpecialKey KeyDown ) -> dist $~! (+ 0.1)
   (SpecialKey KeyLeft ) -> pos $~! \(x,y,z) -> (x+0.1,y,z)
@@ -254,7 +266,7 @@ keyboardMouse dist angles pos key Down _ _ = case key of
       newVal inc col = col + inc `mod'` 360
       rotY inc (x, y) = (x,newVal inc y)
       rotX inc (x, y) = (newVal inc x,y)
-keyboardMouse _ _ _ _ _ _ _ = return ()
+keyboardMouse _ _ _ _ _ _ _ _ = return ()
 
 --changes the angle of rotation by 0.5 degrees each time it's called
 idle :: IORef GLfloat -> IdleCallback
