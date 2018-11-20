@@ -179,6 +179,29 @@ getIO :: (GLfloat, [[Point2D]]) -> IO ()
 getIO (col, pts) = do hsbToColour col
                       drawCube pts
 
+numOfGens :: Int
+numOfGens = 45
+
+--gets all generations that will be used of a given grid
+gens :: [Grid]
+gens = [x | x <- (nIterations numOfGens theOtherGrid), x /= []]
+
+gridWidth :: Float
+gridWidth = 100
+
+gridHight :: Float
+gridHight = 100
+
+gridDepth :: Float
+gridDepth = 100
+
+mapPoints :: [Point] -> [Point]
+mapPoints lst = [((x-xOffset), -(y-yOffset), (z-zOffset) ) | (x,y,z)<-lst]
+  where
+    xOffset = (gridWidth/2)
+    yOffset = (gridHight/2)
+    zOffset = (gridDepth/2)
+
 --main
 main :: IO ()
 main = do
@@ -196,9 +219,10 @@ main = do
   colour <- newIORef 255
   pos <- newIORef (0,0,0)
   mat <- newIORef (getRotations (0,0))
+  generation <- newIORef 0
   --displays points
-  displayCallback $= (display mat colour distance pos)
-  keyboardMouseCallback $= Just (keyboardMouse mat distance angle pos)
+  displayCallback $= (display generation mat colour distance pos)
+  keyboardMouseCallback $= Just (keyboardMouse generation mat distance angle pos)
   --makes changes
   idleCallback $= Just (idle colour)
   mainLoop
@@ -209,8 +233,8 @@ reshape newsize size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef Matrix -> IORef GLfloat -> IORef GLfloat  -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
-display mat' colour distance  pos = do
+display :: IORef Int -> IORef Matrix -> IORef GLfloat -> IORef GLfloat  -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
+display gen mat' colour distance  pos = do
   --helper function that creates a color
   --clears the color buffer
   clear [ ColorBuffer ]
@@ -219,8 +243,9 @@ display mat' colour distance  pos = do
   --angle' <- readIORef angle
   colour' <- readIORef colour
   pos' <- readIORef pos
+  gen' <- readIORef gen
   mat <- readIORef mat'
-  let centers = cens mat dist colour' pos'
+  let centers = cens gen' mat dist colour' pos'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
     --takes a list of points and rotates them to where they will be for the 'scene'
@@ -233,14 +258,15 @@ display mat' colour distance  pos = do
     mapM_ (getIO) ((projects dist) . (squareColour centers colour') . (culling dist) $ (makeCubes mat centers))
   flush
   --limits the frame rate
-  threadDelay (1000 `div` 20)
+  --threadDelay (1000 `div` 20)
   --tells the double buffer to update
   swapBuffers
     where
-      cens mat dist colour' pos'= (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat myPoints) pos'
+      cens gen' mat dist colour' pos'= (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat (mapPoints $ gridToLivingPoints (gens !! gen'))) pos'
 
-keyboardMouse ::  IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
-keyboardMouse mat dist angles pos key Down _ _ = case key of
+keyboardMouse ::  IORef Int -> IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
+keyboardMouse gen mat dist angles pos key Down _ _ = case key of
+  (Char ' ') -> gen $~! (nextGen)
   (Char 'w') -> do
                (angles $~! (rotX (2)))
                angles' <- readIORef angles
@@ -266,7 +292,9 @@ keyboardMouse mat dist angles pos key Down _ _ = case key of
       newVal inc col = col + inc `mod'` 360
       rotY inc (x, y) = (x,newVal inc y)
       rotX inc (x, y) = (newVal inc x,y)
-keyboardMouse _ _ _ _ _ _ _ _ = return ()
+      --moves to the next generation then when it gets to the last generation it goes back to the start
+      nextGen curGen = (curGen + 1) `mod` (length gens-1)
+keyboardMouse _ _ _ _ _ _ _ _ _ = return ()
 
 --changes the angle of rotation by 0.5 degrees each time it's called
 idle :: IORef GLfloat -> IdleCallback
