@@ -19,8 +19,8 @@ type Angle = GLfloat
 
 --takes a size, a center point and a rotation matrix
 --it creates a cube at that center point (as a list of its faces), rotates it and then moves it to the center point
-makeCube :: Matrix -> GLfloat -> Point -> [Point]
-makeCube mat size center = movePoints (rotate mat byOrigin) center
+makeCube ::  GLfloat -> Point -> [Point]
+makeCube  size center = movePoints (byOrigin) center
   where
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
@@ -35,8 +35,8 @@ movePoints :: [Point] -> Point -> [Point]
 movePoints xs (x, y, z)= [((x + x'), (y + y'), (z+z'))| (x', y', z') <- xs]
 
 --takes a list of center points and a rotation matrix makes cubes for all of the centers
-makeCubes :: Matrix -> [Point] -> [[Point]]
-makeCubes mat lst = [(makeCube mat 1 point) | point<-lst]
+makeCubes ::  [Point] -> [[Point]]
+makeCubes lst = [(makeCube 1 point) | point<-lst]
 
 --Takes two matrices and multiplies them
 multiplyMat :: Matrix -> Matrix -> Matrix
@@ -58,9 +58,10 @@ pointToVec (x,y,z) = [x,y,z]
 
 --Takes in a rotation matrix and a list of points and rotates all of the points using the matrix
 rotate :: Matrix -> [Point] -> [Point]
-rotate  mat  m = [rot s | s <- m]
-  where
-    rot x = vecToPoint (multMatVec mat (pointToVec x))
+rotate  mat  m = [rot mat s | s <- m]
+
+rot :: Matrix -> Point -> Point
+rot mat x = vecToPoint (multMatVec mat (pointToVec x))
 
 --give roation matrix for rotation around the X axis by a given angle
 rotationX :: GLfloat -> Matrix
@@ -89,21 +90,21 @@ subVectors :: Vector -> Vector -> Vector
 subVectors v1 v2 = [(v1 !! a) - (v2 !! a) | a <- [0..(length v1 - 1)]]
 
 --projects a list of 3D points into 2D
-projects :: GLfloat -> [(GLfloat, [[Point]])] -> [(GLfloat, [[Point2D]])]
-projects distance pts = map proj pts
+projects :: Point -> Point -> [(GLfloat, [[Point]])] -> [(GLfloat, [[Point2D]])]
+projects angles camera pts = map proj pts
   where
-    proj (colour, points) = (colour, map (map (project distance)) points)
+    proj (colour, points) = (colour, map (map (project camera angles)) points)
 
 --takes a 3D point and projects it using a projection matrix (created for that point to create the illusing of perspecive)
-project :: GLfloat -> Point -> Point2D
-project distance point = project' point (0,0,distance) (0,0,0) (0,0,1)
+project :: Point -> Point -> Point  -> Point2D
+project camera angles point = project' camera point angles 1
 {-project distance point =  vec2DToPoint2D $ multMatVec (proj point) (pointToVec point)
   where
     proj (x, y, z) = [[1/(distance - z),0,0],[0,1/(distance - z),0]]
     vec2DToPoint2D (x:n:ns) = (x,n)-}
 
-project' :: Point -> Point -> Point -> Point  -> Point2D
-project' (ax, ay, az) (cx, cy, cz) (tx, ty, tz) (ex, ey, ez) = (bx, by)
+project' :: Point -> Point -> Point -> GLfloat  -> Point2D
+project' (ax, ay, az) (cx, cy, cz) (tx, ty, tz) zoom = (bx, by)
   where
     x = ax - cx
     y = ay - cy
@@ -116,20 +117,20 @@ project' (ax, ay, az) (cx, cy, cz) (tx, ty, tz) (ex, ey, ez) = (bx, by)
     stz = sin (radians tz)
     dx = cty*(stz*y+ctz*x)-sty*z
     dy = stx*(cty*z+sty*(stz*y+ctz*x))+ctx*(ctz*y-stz*x)
-    dz = ctx*(cty*z+sty*(stz*y+ctz*x))+stx*(ctz*y-stz*x)
-    bx = (ez/dz)*dx+ex
-    by = (ez/dz)*dy+ey
+    dz = ctx*(cty*z+sty*(stz*y+ctz*x))-stx*(ctz*y-stz*x)
+    bx = (zoom/dz)*dx
+    by = (zoom/dz)*dy
 
 --Gets the distance from a point to the camera (camera is always (0,0,z))
-getDist :: GLfloat -> Point -> GLfloat
-getDist cam (x,y,z) = sqrt(x*x + y*y + (cam-z)**2)
+getDist :: Point -> Point -> GLfloat
+getDist (cx, cy, cz) (x,y,z) = sqrt((cx-x)**2 + (cy-y)**2 + (cz-z)**2)
 
 --takes in a list of center points and sorts them in order of distance from the camera
-orderPoints :: GLfloat -> [Point] -> [Point]
+orderPoints :: Point -> [Point] -> [Point]
 orderPoints cam lst = reverse (sortBy (comparePoints cam)lst)
 
 --takes in two points and returns their ordering
-comparePoints :: GLfloat ->Point -> Point -> Ordering
+comparePoints :: Point -> Point -> Point -> Ordering
 comparePoints cam p1 p2 = comp (getDist cam p1) (getDist cam p2)
   where
     comp a b
@@ -139,7 +140,7 @@ comparePoints cam p1 p2 = comp (getDist cam p1) (getDist cam p2)
 
 --takes a cube and gets rid of the corner furthest from the camer
 --(does this as a form of culling as there will always by one corner (and 3 sides) that can't be seen and so don't need to be drawn)
-culling :: GLfloat -> [[Point]] -> [[[Point]]]
+culling :: Point -> [[Point]] -> [[[Point]]]
 culling cam lst = [[face | face <- faces, not ((farPoint.concat $ take 2 faces) `elem` face)]| faces <- world]
   where
     farPoint = maximumBy (comparePoints cam)
@@ -153,10 +154,15 @@ group 6 lst = (take 4 lst):group 5 (drop 4 lst)
 group n lst = (take 4 lst):group (n-1) (drop 4 lst)
 
 --takes a point and the position of the camera (the camera is always at (0,0,_)) and checks if the point is behind the camera
-exclude :: GLfloat -> Point -> Bool
-exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam pt)))
+exclude :: Point -> Point -> Point -> Bool
+exclude (_,ang,_) cam point  = (getAngles cam point) > (48.8140748342903548 + ang)
+
+getAngles (x,y,z) (x',y',z') = (toDegrees $ atan((z-z')/(y-y')))
   where
-    ptToO = (getDist 0 pt)
+    toDegrees r = r*360/pi/2
+{-exclude cam pt = not ((ptToO > (getDist cam (0,0,0))) && (ptToO > (getDist cam pt)))
+  where
+    ptToO = (getDist (0,0,0) pt)-}
 
 --takes a tripple of angles and returns the rotation matrix for rotating around the x and y axis (for each angle respectively)
 --limited to x and y as those are the only two useful axis for roation (here) this also reduces the amout of
@@ -186,7 +192,7 @@ squareColour :: [Point] ->  GLfloat -> [[[Point]]] -> [(GLfloat, [[Point]])]
 squareColour cents offset lst = [(val (cents !! s), lst !! s) | s <- [0..(length cents - 1)] ]
   where
     val :: Point -> GLfloat
-    val ns = (mod' ((+ offset) . (10 *) $ (getDist 0 ns)) 360)
+    val ns = (mod' ((+ offset) . (10 *) $ (getDist (0,0,0) ns)) 360)
 
 --takes a list of 2D points and returns the vertexs for them
 --specifically takes the points for a cube
@@ -236,15 +242,15 @@ main = do
   enterGameMode
   reshapeCallback $= Just (reshape (Size 1000 1000))
   --creates a mutatable variable for the angle of rotation
-  angle <- newIORef (0,0)
-  distance <- newIORef 4
+  angle <- newIORef (0,0,0)
   colour <- newIORef 255
-  pos <- newIORef (0,0,0)
-  mat <- newIORef (getRotations (0,0))
+  pos <- newIORef (0,0,4)
+  cubes <- newIORef (cens 0 (0,0,4))
+  --mat <- newIORef (getRotations (0,0))
   generation <- newIORef 0
   --displays points
-  displayCallback $= (display generation mat colour distance pos)
-  keyboardMouseCallback $= Just (keyboardMouse generation mat distance angle pos)
+  displayCallback $= (display angle generation colour pos)
+  keyboardMouseCallback $= Just (keyboardMouse generation angle pos)
   --makes changes
   idleCallback $= Just (idle colour)
   mainLoop
@@ -255,66 +261,58 @@ reshape newsize size = do
   postRedisplay Nothing
 
 --displays the points as a loop
-display :: IORef Int -> IORef Matrix -> IORef GLfloat -> IORef GLfloat  -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
-display gen mat' colour distance  pos = do
+display :: IORef Point -> IORef Int -> IORef GLfloat  -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
+display angles gen colour pos = do
   --helper function that creates a color
   --clears the color buffer
   clear [ ColorBuffer ]
   --gets the value of the mutatable variable and stores it as angle'
-  dist <- readIORef distance
   colour' <- readIORef colour
   pos' <- readIORef pos
   gen' <- readIORef gen
-  mat <- readIORef mat'
+  angles' <- readIORef angles
   --'prepares' the list of centers by rotating, moving ordering then removing as necsasarry 
-  let centers = cens gen' mat dist colour' pos'
+  let centers = cens gen' pos' angles'
   --renders groups of four vertexs as squares
   renderPrimitive Quads $ do
     --takes a list of prepare centers  makes cubes at each of theses points
     --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
     --then projects the points to 2D using a persepective projection matrix
     --then converts the points the vertexs and colours
-    mapM_ (getIO) ((projects dist) . (squareColour centers colour') . (culling dist) $ (makeCubes mat centers))
+    mapM_ (getIO) ((projects angles' pos') . (squareColour centers colour') . (culling pos') $ (makeCubes centers))
   flush
   --tells the double buffer to update
   swapBuffers
-    where
-      --takes a list of points and rotates them to where they will be for the 'scene'
-      --then removes points that will be behind the camera
-      --then orders the points in distance to the camera
-      cens gen' mat dist colour' pos'= (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat (mapPoints $ gridToLivingPoints (gens !! gen'))) pos'
 
-keyboardMouse ::  IORef Int -> IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
-keyboardMouse gen mat dist angles pos key Down _ _ = case key of
+--takes a list of points and rotates them to where they will be for the 'scene'
+--then removes points that will be behind the camera
+--then orders the points in distance to the camera
+cens gen' pos' angles' = (orderPoints pos') . (filter (\pt -> exclude angles' pos' pt)) $ (mapPoints $ gridToLivingPoints (gens !! gen'))
+
+keyboardMouse ::  IORef Int -> IORef Point -> IORef Point -> KeyboardMouseCallback
+keyboardMouse gen angles pos key Down _ _ = case key of
   (Char ' ') -> gen $~! (nextGen)
-  (Char 'w') -> do
-               (angles $~! (rotX (2)))
-               angles' <- readIORef angles
-               (writeIORef mat (getRotations  angles'))
-  (Char 's') -> do
-               (angles $~! (rotX (-2)))
-               angles' <- readIORef angles
-               (writeIORef mat (getRotations  angles'))
-  (Char 'd') -> do
-               (angles $~! (rotY (2)))
-               angles' <- readIORef angles
-               (writeIORef mat (getRotations  angles'))
-  (Char 'a') -> do
-               (angles $~! (rotY (-2)))
-               angles' <- readIORef angles
-               (writeIORef mat (getRotations  angles'))
-  (SpecialKey KeyUp   ) -> dist $~! (+ (-0.1))
-  (SpecialKey KeyDown ) -> dist $~! (+ 0.1)
+  (Char 'w') -> angles $~! (rotX (-2))
+  (Char 's') -> angles $~! (rotX (2))
+  (Char 'd') -> angles $~! (rotY (2))
+  (Char 'a') -> angles $~! (rotY (-2))
+  (SpecialKey KeyUp   ) -> do
+                           (x,y,z) <- readIORef angles
+                           let mat = getRotations (x,y)
+                           let move = rot mat (0,0,-0.1)
+                           pos $~! (addPts move)
+  (SpecialKey KeyDown ) -> pos $~! \(x,y,z) -> (x,y,z+0.1)
   (SpecialKey KeyLeft ) -> pos $~! \(x,y,z) -> (x+0.1,y,z)
   (SpecialKey KeyRight) -> pos $~! \(x,y,z) -> (x-0.1,y,z)
   _ -> return ()
   where
       newVal inc col = col + inc `mod'` 360
-      rotY inc (x, y) = (x,newVal inc y)
-      rotX inc (x, y) = (newVal inc x,y)
+      rotY inc (x, y, z) = (x,newVal inc y,z)
+      rotX inc (x, y, z) =  (newVal inc x,y,z)
+      addPts (x,y,z) (x',y',z') = (x+x', y+y', z+z')
       --moves to the next generation then when it gets to the last generation it goes back to the start
       nextGen curGen = (curGen + 1) `mod` (length gens-1)
-keyboardMouse _ _ _ _ _ _ _ _ _ = return ()
+keyboardMouse   _ _ _ _ _ _ _ = return ()
 
 --changes the angle of rotation by 0.5 degrees each time it's called
 idle :: IORef GLfloat -> IdleCallback
