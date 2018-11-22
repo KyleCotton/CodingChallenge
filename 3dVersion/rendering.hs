@@ -1,10 +1,11 @@
-module Rendering where
+--module Rendering where
 
 import Data.List hiding (group)
 import Test.QuickCheck
 import Graphics.UI.GLUT hiding (Matrix, Angle, project, rotate)
 import Data.IORef
 import Data.Fixed
+import Data.Time
 import Control.Concurrent
 import Game
 
@@ -25,6 +26,7 @@ makeCube mat size center = movePoints (rotate mat byOrigin) center
     byOrigin = [(radius', radius', radius'), (-radius', radius', radius'), (-radius', -radius', radius'), (radius', -radius', radius'),
                 (radius', radius', -radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (radius', -radius', -radius'),
                 (radius', -radius', -radius'), (radius', -radius', radius'), (radius', radius', radius'), (radius', radius', -radius'), 
+
                 (-radius', radius', radius'), (-radius', radius', -radius'), (-radius', -radius', -radius'), (-radius', -radius', radius'),
                 (-radius', radius', -radius'), (radius', radius', -radius'),(radius', radius', radius'), (-radius', radius', radius'), 
                 (radius', -radius', radius'), (-radius', -radius', radius'), (-radius', -radius', -radius'), (radius', -radius', -radius')]
@@ -179,8 +181,9 @@ getIO :: (GLfloat, [[Point2D]]) -> IO ()
 getIO (col, pts) = do hsbToColour col
                       drawCube pts
 
+--number of generatison fo the game of life that will be generated
 numOfGens :: Int
-numOfGens = 45
+numOfGens = 60
 
 --gets all generations that will be used of a given grid
 gens :: [Grid]
@@ -195,6 +198,7 @@ gridHight = 100
 gridDepth :: Float
 gridDepth = 100
 
+--takes a list of 'people' and moves them to the center of the rendering area
 mapPoints :: [Point] -> [Point]
 mapPoints lst = [((x-xOffset), -(y-yOffset), (z-zOffset) ) | (x,y,z)<-lst]
   where
@@ -205,26 +209,41 @@ mapPoints lst = [((x-xOffset), -(y-yOffset), (z-zOffset) ) | (x,y,z)<-lst]
 --main
 main :: IO ()
 main = do
-  (_progName, _args) <- getArgsAndInitialize
   --makes GLUT use double buffering
   initialDisplayMode $= [DoubleBuffered]
   initialWindowSize  $= (Size 1000 1000)
   --creates a window
-  createWindow "Game Of Life"
+  getArgsAndInitialize
+  w <- createWindow "Game Of Life"
   enterGameMode
   reshapeCallback $= Just (reshape (Size 1000 1000))
   --creates a mutatable variable for the angle of rotation
   angle <- newIORef (0,0)
-  distance <- newIORef 4
+  --base distance from the camera to the origin
+  distance <- newIORef 10
+  --the initial colour offset
   colour <- newIORef 255
+  --the initial position offset of the environment
   pos <- newIORef (0,0,0)
+  --initial rotation matrix
   mat <- newIORef (getRotations (0,0))
+  --intial time increment for next generation
+  timint <- newIORef 1
+  --current teim
+  tim <- getCurrentTime
+  --sets the last time the colour offset was changed
+  colTime <- newIORef tim
+  --sets the last time the generation was changed
+  genTime <- newIORef tim
+  --the generation currently being displayed
   generation <- newIORef 0
   --displays points
   displayCallback $= (display generation mat colour distance pos)
-  keyboardMouseCallback $= Just (keyboardMouse generation mat distance angle pos)
-  --makes changes
-  idleCallback $= Just (idle colour)
+  reshapeCallback $= Just (\x -> (viewport $= (Position 0 0, Size 1000 1000)))
+  --gets user input
+  keyboardMouseCallback $= Just (keyboardMouse timint generation mat distance angle pos)
+  --changes the colour offset and generation (as needed)
+  idleCallback $= Just (idle timint generation genTime colTime colour)
   mainLoop
 
 reshape :: Size ->  ReshapeCallback
@@ -264,8 +283,8 @@ display gen mat' colour distance  pos = do
     where
       cens gen' mat dist colour' pos'= (orderPoints dist) . (filter (\pt -> exclude dist pt)) $ movePoints (rotate mat (mapPoints $ gridToLivingPoints (gens !! gen'))) pos'
 
-keyboardMouse ::  IORef Int -> IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
-keyboardMouse gen mat dist angles pos key Down _ _ = case key of
+keyboardMouse ::  IORef Float -> IORef Int -> IORef Matrix -> IORef GLfloat -> IORef (GLfloat, GLfloat) -> IORef (GLfloat, GLfloat, GLfloat) -> KeyboardMouseCallback
+keyboardMouse timdiff gen mat dist angles pos key Down _ _ = case key of
   (Char ' ') -> gen $~! (nextGen)
   (Char 'w') -> do
                (angles $~! (rotX (2)))
@@ -283,29 +302,56 @@ keyboardMouse gen mat dist angles pos key Down _ _ = case key of
                (angles $~! (rotY (-2)))
                angles' <- readIORef angles
                (writeIORef mat (getRotations  angles'))
+  (Char '=') -> timdiff $~! (increase 0.5)
+  (Char '-') -> timdiff $~! (increase (-0.5))
   (SpecialKey KeyUp   ) -> dist $~! (+ (-0.1))
   (SpecialKey KeyDown ) -> dist $~! (+ 0.1)
   (SpecialKey KeyLeft ) -> pos $~! \(x,y,z) -> (x+0.1,y,z)
   (SpecialKey KeyRight) -> pos $~! \(x,y,z) -> (x-0.1,y,z)
   _ -> return ()
   where
+      --increased the colour offset value making sure it doesn't go above 360
       newVal inc col = col + inc `mod'` 360
+      --increase the x and y andgles
       rotY inc (x, y) = (x,newVal inc y)
       rotX inc (x, y) = (newVal inc x,y)
+      --takes in the time interval and changes it as needed not allowing it to get to 0 seconds
+      increase inc tim = if (tim > 0.5) || (inc > 0) then tim + inc else tim
       --moves to the next generation then when it gets to the last generation it goes back to the start
       nextGen curGen = (curGen + 1) `mod` (length gens-1)
-keyboardMouse _ _ _ _ _ _ _ _ _ = return ()
+keyboardMouse _ _ _ _ _ _ _ _ _ _ = return ()
 
 --changes the angle of rotation by 0.5 degrees each time it's called
-idle :: IORef GLfloat -> IdleCallback
-idle colour  = do
+idle :: IORef Float -> IORef Int -> IORef UTCTime -> IORef UTCTime -> IORef GLfloat -> IdleCallback
+idle timdiff gen genTime colourTime colour  = do
   --gets the value of the mutatable variable colour 
   colour' <- readIORef colour
   --writes the new value of the mutatable variable colour
-  writeIORef colour (newVal colour')
+  colTime' <- readIORef colourTime
+  genTime' <- readIORef genTime
+  timediff' <- readIORef timdiff
+  current <- getCurrentTime
+  gen' <- readIORef gen
+  --if at least 0.05 seconds has passed change the colour offset
+  if (diffUTCTime current colTime') > 0.05 then makeChanges colour' else return()
+  --if at least the time increment for next generations has passed, move to the next generation
+  if (diffUTCTime current genTime') > (realToFrac timediff') then newGen gen' else return()
   postRedisplay Nothing
     where
-      newVal col = col + 0.05 `mod'` 360
+      --moves to the next genreation and resets it's time counter
+      newGen gen' = do
+                writeIORef gen (nextGen gen')
+                tim <- getCurrentTime
+                writeIORef genTime tim
+      --changes the colour offset and resets it's time counter
+      makeChanges colour' = do
+                    writeIORef colour (newVal colour')
+                    tim <- getCurrentTime
+                    writeIORef colourTime tim
+      --increases the colour offset by 2 and makes sure it doesn't go above 360
+      newVal col = col + 2 `mod'` 360
+      --moves to the next generation then when it gets to the last generation it goes back to the start
+      nextGen curGen = (curGen + 1) `mod` (length gens-1)
 
 
 
