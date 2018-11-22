@@ -21,50 +21,52 @@ type Location = (Float , Float, Float)    -- Each Block has an cartesian coordin
 type Person   = (Health, Location) -- Each 'Person' will have a health and location
 type Grid     = [Person]           -- The grid is represented as a list of all the people
 
-theGrid :: Grid
-theGrid = [( ((fromInteger x, fromInteger y, fromInteger z) `elem` aliveStates)            -- Define the starting Grid for the game
-           , (fromInteger x, fromInteger y, fromInteger z) ) | x <- [0..99], y <- [0..99], z <- [0..99]] --     The grid will be all false except
-                                                                            --     the ones in aliveStates
+--takes all of the points from aliveStates and converts them into people with those co-ordinates
 theOtherGrid :: Grid
 theOtherGrid = [ (True,l) | l <- aliveStates ]
 
-tOG :: Grid
-tOG = [ (cond (x,y,z), (fromInteger x, fromInteger y, fromInteger z)) | x <- [0..60], y <- [0..60], z <- [0..60], cond (x,y,z) ]
-        where
-          cond (a,b,c) = ((mod a 7 == 0) && (mod b 7 == 0) && (mod c 7 ==0) || ((mod a 11 == 0) && (mod b 11 == 0) && (mod c 11 == 0)))
-
+--initial living people
 aliveStates :: [Location]  -- A list of locations of the alive states
 aliveStates = [(50,50,50)
               ,(51,50,50)
               ,(50,51,50)
               ,(51,51,50)]
 
+--takes in a Grid and an integer and returns a list of n Grids each grid the successive generation from the last
+nIterations :: Int -> Grid -> [Grid]
+--iterates through next Gen called on the grid and uses take to get the first n generations (this uses haskell's lazyness)
+nIterations n g = take n $ iterate (nextGen) g
 
-nIterations :: Int -> Grid -> [Grid]             -- This returns a list of grids
-nIterations n g = take n $ iterate (nextGen) g   --   after n iterations
-
+--gridToLivingPoints and fridToDeadPoints get all the livin and all the dead points respectively
 gridToLivingPoints, gridToDeadPoints :: Grid -> [Location]
 gridToLivingPoints grd = [coord | (liv, coord) <- grd, liv]
 gridToDeadPoints grd = [coord | (liv, coord) <- grd, not liv]
 
+--nextGen takes a Grid and returns the sucessive generation for the grid 
 nextGen :: Grid -> Grid
-nextGen gss = filter (\(l, loc) -> l) (map (\p@(h, l) -> (isAlive p gss, l))
+
+nextGen gss = {-Then removes all of the dead points from the new grid-}filter (\(l, loc) -> l) {-Then maps isAlive to the new grid to get the next generation-} (map (\p@(h, l) -> (isAlive p gss, l))
+                                                    --adds all of the points around the living points (not alread occupied) as dead points to the grid
                                                     ( gss ++
                                                       [ (False,local) |
                                                       local <- nub zombieLocals,
                                                       not (elem local (getPoints gss) ) ] ))
                   where
+                    --find all of the points around the all living people in the grid passed in
                     zombieLocals = (concat (map zombieLocal ( gridToLivingPoints gss )))
 
+--takes a Grid and returns a list of the locations of all the peopl in the grid
 getPoints :: Grid -> [Location]
 getPoints = map (\(p,l) -> l)
 
+--takes a location and returns all of the locations around that location in 3D space
 zombieLocal :: Location -> [Location]
---zombieLocal (x,y) = [ (a,b) | a <- [x-1..x+1], b <- [y-1..y+1], not ((a==x)&&(b==y)) ]
 zombieLocal (x,y,z) = [ (a,b,c) | a <- [x-1..x+1], b <- [y-1..y+1], c <- [z-1..z+1], (a,b,c) /= (x,y,z)]
 
-isAlive :: Person -> Grid -> Bool                                                       -- Function that generates the next grid from the previous
-isAlive (h, (x, y, z)) gss = let gs = length [1 |  (h', (x', y', z'))                    --    This fucntion takes in a person and the current grid
+--This fucntion takes in a person and the current grid and returns whether or not that person will be alive in the next generation
+isAlive :: Person -> Grid -> Bool
+                             --gets the number of living people around the given person
+isAlive (h, (x, y, z)) gss = let gs = length [1 |  (h', (x', y', z'))
                                                    <- gss
                                                          , (x',y',z') /= (x,y,z)
                                                          , x' `elem` [x-1,x,x+1]  --    if the block is alive and 3 or 2 of its neigbours
@@ -72,5 +74,7 @@ isAlive (h, (x, y, z)) gss = let gs = length [1 |  (h', (x', y', z'))           
                                                          , z' `elem` [z-1,z,z+1]] --    if the block is dead and is surrounded by 3 alive
                                 in                                                --    neigbours then it will become alive.
                                   case h of
+                                    --if the person is alive then if there are 9 people around it it will remain alive otherwise it will die
                                     True  -> (gs == 9)
+                                    --if the person is dead then if there are 4 people around it it will 'be born' otherwise it will remain dead
                                     False -> (gs == 4)

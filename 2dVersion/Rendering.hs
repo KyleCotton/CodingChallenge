@@ -1,4 +1,4 @@
-module Rendering where
+--module Rendering where
 
 import Data.List
 import Test.QuickCheck
