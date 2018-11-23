@@ -2,7 +2,7 @@
 #+BEGIN_EXPORT latex
 \begin{titlepage}
 \begin{center}
-{\Large Infomatics 1A \par}
+{\Large Informatics 1A \par}
 \vspace{2cm}
 {\Large HASKELL PROGRAMMING COMPETITION \par}
 \vspace{2cm}
@@ -21,7 +21,7 @@ BY \par
 * Inf1-Competition
 ** Game of Life
 Our team has decided to make an improved version of Conan's Game of Life entirely in Haskell.
-The code features both two and three dimensional real time rendering.
+The code features both two and three dimensional real time rendering; using a team built 3D rendering algorithm.
 
 ** Images of the Program
 *** 3D Version
