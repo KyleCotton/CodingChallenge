@@ -1,4 +1,4 @@
---module Rendering where
+module Rendering where
 
 import Data.List hiding (group)
 import Test.QuickCheck

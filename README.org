@@ -1,34 +1,55 @@
+#+OPTIONS: toc:nil 
+#+BEGIN_EXPORT latex
+\begin{titlepage}
+\begin{center}
+{\Large Infomatics 1A \par}
+\vspace{2cm}
+{\Large HASKELL PROGRAMMING COMPETITION \par}
+\vspace{2cm}
+BY \par
+\vspace{2cm}
+{\Large KYLE COTTON\\YANNIK NELSON\\DYLAN LYONS\\JASPER KETTEL \par}
+\vspace{2cm}
+{\large May 18th 2017}
+\end{center}
+\vfill
+\end{titlepage}
+
+\tableofcontents
+#+END_EXPORT
+
 * Inf1-Competition
 ** Game of Life
 Our team has decided to make an improved version of Conan's Game of Life entirely in Haskell.
 The code features both two and three dimensional real time rendering.
 
-** TODO Images
+** Images of the Program
+*** 3D Version
 
-#+CAPTION: Image 1
-#+NANE: 1.super
-[[file:1.png]]
+ #+CAPTION: Image 1-3
+ #+NANE: 1-3.super
+ [[file:img/1-3.png]]
 
-#+CAPTION: Image 2
-#+NANE: 2.super
-[[file:2.png]]
+ #+CAPTION: Image 2-3
+ #+NANE: 2-3.super
+ [[file:img/2-3.png]]
 
-#+CAPTION: Image 3
-#+NANE: 3.super
-[[file:3.png]]
+ #+CAPTION: Image 3-3
+ #+NANE: 3-3.super
+ [[file:img/3-3.png]]
 
-#+CAPTION: Image 4
-#+NANE: 4.super
-[[file:4.png]]
+ #+CAPTION: Image 4-3
+ #+NANE: 4-3.super
+ [[file:img/4-3.png]]
 
-#+CAPTION: Image 5
-#+NANE: 5.super
-[[file:5.png]]
+ #+CAPTION: Image 5-3
+ #+NANE: 5-3.super
+ [[file:img/5-3.png]]
 
-#+CAPTION: Image 6
-#+NANE: 6.super
-[[file:6.png]]
+ #+CAPTION: Image 6-3
+ #+NANE: 6-3.super
+ [[file:img/6-3.png]]
 
-#+CAPTION: Image 7
-#+NANE: 7.super
-[[file:7.png]]
+ #+CAPTION: Image 7-3
+ #+NANE: 7-3.super
+ [[file:img/7-3.png]]
