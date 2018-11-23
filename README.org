@@ -4,7 +4,31 @@ Our team has decided to make an improved version of Conan's Game of Life entirel
 The code features both two and three dimensional real time rendering.
 
 ** TODO Images
-[[file:Image 1/1.png
-[[file:Image 1/1.png
-[[file:Image 1/1.png
 
+#+CAPTION: Image 1
+#+NANE: 1.super
+[[file:1.png]]
+
+#+CAPTION: Image 2
+#+NANE: 2.super
+[[file:2.png]]
+
+#+CAPTION: Image 3
+#+NANE: 3.super
+[[file:3.png]]
+
+#+CAPTION: Image 4
+#+NANE: 4.super
+[[file:4.png]]
+
+#+CAPTION: Image 5
+#+NANE: 5.super
+[[file:5.png]]
+
+#+CAPTION: Image 6
+#+NANE: 6.super
+[[file:6.png]]
+
+#+CAPTION: Image 7
+#+NANE: 7.super
+[[file:7.png]]
