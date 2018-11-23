@@ -1,55 +1,39 @@
-#+OPTIONS: toc:nil 
-#+BEGIN_EXPORT latex
-\begin{titlepage}
-\begin{center}
-{\Large Informatics 1A \par}
-\vspace{2cm}
-{\Large HASKELL PROGRAMMING COMPETITION \par}
-\vspace{2cm}
-BY \par
-\vspace{2cm}
-{\Large KYLE COTTON\\YANNIK NELSON\\DYLAN LYONS\\JASPER KETTEL \par}
-\vspace{2cm}
-{\large May 18th 2017}
-\end{center}
-\vfill
-\end{titlepage}
-
-\tableofcontents
-#+END_EXPORT
-
 * Inf1-Competition
-** Game of Life
-Our team has decided to make an improved version of Conan's Game of Life entirely in Haskell.
-The code features both two and three dimensional real time rendering; using a team built 3D rendering algorithm.
+** TODO FINISH THE TODO LIST
+- [ ] Find best GUI library
+http://hackage.haskell.org/package/GLUT
+- [ ] Generate Shape
+- [ ] Generate Random Map
+*** 3D rendering
+http://www.cs.tau.ac.il/~dcor/Graphics/adv-slides/Introduction%20to%20rendering%20techniques.pd
+mehtod for controlling rotation: map vertical mouse motion (when mouse down) to rotation on the xy plane and horizontal motion to rotation on the zx plane
+https://lodev.org/cgtutor/raycasting.html
+Doom (Duh)
+3D game of life
+4D geometry
 
-** Images of the Program
-*** 3D Version
+3D game of life where the 'cells' are tesseract (4D cubes) (rotating in the 4th dimension) https://en.wikipedia.org/wiki/Tesseract might need to add extra complexity to the game of life may also need to perform ray tracing we could also do the game of life on the surface of a 4D object or a klien bottle or something
+https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
 
- #+CAPTION: Image 1-3
- #+NANE: 1-3.super
- [[file:img/1-3.png]]
+*** Links
+**** TODO Convert From Java Script https://github.com/rithmschool/game-of-life-3d
+DON'T FORGET TO COMMENT THE CODE, IF WE DON'T WE GET 'MARKED DOWN'
 
- #+CAPTION: Image 2-3
- #+NANE: 2-3.super
- [[file:img/2-3.png]]
+**** Creating a GUI application for Haskell https://www.stackbuilders.com/tutorials/haskell/gui-application/
+Go to section where calculator grid is created - could replace buttons with triggered grid squares, click to make alive, etc
+* Todo List
+** TODO Get user input
+- Alive squares
+  - By clicking
+- Get the speed that the program should display generations
+  - Slow
+  - Medium
+  - Fast
+  - Very Fast
+  - Or Slider
 
- #+CAPTION: Image 3-3
- #+NANE: 3-3.super
- [[file:img/3-3.png]]
-
- #+CAPTION: Image 4-3
- #+NANE: 4-3.super
- [[file:img/4-3.png]]
-
- #+CAPTION: Image 5-3
- #+NANE: 5-3.super
- [[file:img/5-3.png]]
-
- #+CAPTION: Image 6-3
- #+NANE: 6-3.super
- [[file:img/6-3.png]]
-
- #+CAPTION: Image 7-3
- #+NANE: 7-3.super
- [[file:img/7-3.png]]
+** TODO Fix the window scaling
+* Error Message
+c112214:CodingChallenge kyle$ ./Haq
+2018-11-16 19:52:32.712 Haq[60266:3398974] GLUT Warning: The following is a new check for GLUT 3.0; update your code.
+2018-11-16 19:52:32.713 Haq[60266:3398974] GLUT Fatal Error: redisplay needed for window 1, but no display callback.
