@@ -1,4 +1,4 @@
-module Rendering where
+module Rendering3D where
 
 import Data.List hiding (group)
 import Test.QuickCheck
@@ -231,16 +231,16 @@ mapPoints lst = [((x-xOffset), -(y-yOffset), (z-zOffset) ) | (x,y,z)<-lst]
     zOffset = (gridDepth/2)
 
 --main
-main :: IO ()
-main = do
-  (_progName, _args) <- getArgsAndInitialize
+maindraw :: IO ()
+maindraw = do
+  --(_progName, _args) <- getArgsAndInitialize
   --makes GLUT use double buffering
-  initialDisplayMode $= [DoubleBuffered]
-  initialWindowSize  $= (Size 1000 1000)
+  --initialDisplayMode $= [DoubleBuffered]
+  --initialWindowSize  $= (Size 1000 1000)
   --creates a window
-  createWindow "Game Of Life"
-  enterGameMode
-  reshapeCallback $= Just (reshape (Size 1000 1000))
+  --createWindow "Game Of Life"
+  --enterGameMode
+  --reshapeCallback $= Just (reshape (Size 1000 1000))
   --creates a mutatable variable for the angle of rotation
   angle <- newIORef (0,0,0)
   colour <- newIORef 255
@@ -255,10 +255,10 @@ main = do
   idleCallback $= Just (idle colour)
   mainLoop
 
-reshape :: Size ->  ReshapeCallback
-reshape newsize size = do
-  viewport $= (Position 0 0, newsize)
-  postRedisplay Nothing
+--reshape :: Size ->  ReshapeCallback
+--reshape newsize size = do
+--  viewport $= (Position 0 0, newsize)
+--  postRedisplay Nothing
 
 --displays the points as a loop
 display :: IORef Point -> IORef Int -> IORef GLfloat  -> IORef (GLfloat, GLfloat, GLfloat) -> DisplayCallback
@@ -279,7 +279,7 @@ display angles gen colour pos = do
     --then removes the faces of the cube you won't be able to see (most of, it's not perfect)
     --then projects the points to 2D using a persepective projection matrix
     --then converts the points the vertexs and colours
-    mapM_ (getIO) ((projects angles' pos') . (squareColour centers colour') . (culling pos') $ (makeCubes centers))
+    mapM_ (getIO) ((projects angles' pos') . (squareColour centers colour') . (culling pos')$ (makeCubes centers))
   flush
   --tells the double buffer to update
   swapBuffers
@@ -287,7 +287,8 @@ display angles gen colour pos = do
 --takes a list of points and rotates them to where they will be for the 'scene'
 --then removes points that will be behind the camera
 --then orders the points in distance to the camera
-cens gen' pos' angles' = (orderPoints pos') . (filter (\pt -> exclude angles' pos' pt)) $ (mapPoints $ gridToLivingPoints (gens !! gen'))
+cens gen' pos' angles' = (orderPoints pos') $ (mapPoints $ gridToLivingPoints (gens !! gen'))
+--cens gen' pos' angles' = (orderPoints pos') . (filter (\pt -> exclude angles' pos' pt)) $ (mapPoints $ gridToLivingPoints (gens !! gen'))
 
 keyboardMouse ::  IORef Int -> IORef Point -> IORef Point -> KeyboardMouseCallback
 keyboardMouse gen angles pos key Down _ _ = case key of
@@ -298,12 +299,27 @@ keyboardMouse gen angles pos key Down _ _ = case key of
   (Char 'a') -> angles $~! (rotY (-2))
   (SpecialKey KeyUp   ) -> do
                            (x,y,z) <- readIORef angles
-                           let mat = getRotations (x,y)
+                           let mat = getRotations (x,-y)
                            let move = rot mat (0,0,-0.1)
                            pos $~! (addPts move)
-  (SpecialKey KeyDown ) -> pos $~! \(x,y,z) -> (x,y,z+0.1)
-  (SpecialKey KeyLeft ) -> pos $~! \(x,y,z) -> (x+0.1,y,z)
-  (SpecialKey KeyRight) -> pos $~! \(x,y,z) -> (x-0.1,y,z)
+  (SpecialKey KeyDown ) -> do
+                           (x,y,z) <- readIORef angles
+                           let mat = getRotations (x,-y)
+                           let move = rot mat (0,0,0.1)
+                           pos $~! (addPts move)
+                           -- pos $~! \(x,y,z) -> (x,y,z+0.1)
+  (SpecialKey KeyLeft ) -> do
+                           (x,y,z) <- readIORef angles
+                           let mat = getRotations (x,-y)
+                           let move = rot mat (0.1,0,0)
+                           pos $~! (addPts move)
+                           --pos $~! \(x,y,z) -> (x+0.1,y,z)
+  (SpecialKey KeyRight) -> do
+                           (x,y,z) <- readIORef angles
+                           let mat = getRotations (x,-y)
+                           let move = rot mat (-0.1,0,0)
+                           pos $~! (addPts move)
+                           --pos $~! (addPts move)pos $~! \(x,y,z) -> (x-0.1,y,z)
   _ -> return ()
   where
       newVal inc col = col + inc `mod'` 360

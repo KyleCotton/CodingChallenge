@@ -1,5 +1,5 @@
--- import qualified Rendering2D
--- import Game2D
+import qualified Rendering2D
+import Game2D
 import qualified Rendering3D
 import Graphics.UI.GLUT
 import Data.IORef
@@ -23,7 +23,7 @@ display = do
    
 keyboardMouse :: KeyboardMouseCallback
 keyboardMouse key Down _ _ = case key of
-    --(Char '2') -> (Rendering2D.maindraw)
+    (Char '2') -> (Rendering2D.maindraw)
     (Char '3') -> (Rendering3D.maindraw)
     _ -> return()
 keyboardMouse _ _ _ _ = return ()
